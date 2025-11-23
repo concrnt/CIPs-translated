@@ -60,19 +60,12 @@ MIMEタイプは `application/concrnt.document+json` である。
   "author": "con1...",                // required
   "owner": "con1...",                 // optional
 
-  "reference": "cc://con1.../...",    // optional
-  "memberOf": ["cc://con1.../..."],   // optional
-
   "createdAt": "2025-11-23T12:34:56Z" // required
 }
 ```
 
-本仕様では、以下の性質を持つ。
-
-* Document 自体は **不変 (immutable)** であり、書き換えられない。
-  更新は常に「新しい Document を発行する」ことで表現される。
 * `value` の中身や構造は `schema` や上位の CIP によって定義される。
-  CIP-1 は `value` を「任意の JSON 値」として扱う。
+* 上位のCIPによって、追加のフィールドが定義されることがある。
 
 ## 5. フィールド定義
 
@@ -117,19 +110,7 @@ Document の「論理的な所有者」を表す CCID。
 * `owner` が省略された場合、その Document の所有者は `author` と見なしてよい (SHOULD)。
 * `owner` が存在する場合も、それが実際の所有者であるかどうかの検証方法は CIP-3 以降に委ねられる。
 
-
-### 5.7 `reference` (string, optional)
-
-他のリソースへの「主対象」参照を表す文字列。
-CCURI形式で表現しなければならない (MUST)。
-
-### 5.8 `memberOf` (array of string, optional)
-
-当該 Document が「所属したい」と提案するコレクション（タイムラインやセット等）のCCURIのリスト。
-* `memberOf` は **「所属を提案する」情報であり、最終的な採否はコレクション側のポリシーに従う。**
-* サーバやアプリケーションは、ポリシーに反する `memberOf` を無視してもよい (MAY)。
-
-### 5.9 `createdAt` (string, required)
+### 5.7 `createdAt` (string, required)
 
 Document が作成された時刻。
 
