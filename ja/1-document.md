@@ -52,18 +52,18 @@ MIMEタイプは `application/concrnt.document+json` である。
 
 ```json
 {
-  "key": "profile",                                   // optional
-  "contentType": "application/concrnt.document+json", // optional
-  "schema": "https://...",                            // required
-  "value": { ... },                                   // required
+  "key": "profile",                   // optional
+  "contentType": "application/json",  // optional
+  "schema": "https://...",            // required
+  "value": { ... },                   // required
 
-  "author": "con1...",                                // required
-  "owner": "con1...",                                 // optional
+  "author": "con1...",                // required
+  "owner": "con1...",                 // optional
 
-  "reference": "cc://con1.../...",                    // optional
-  "memberOf": ["cc://con1.../..."],                   // optional
+  "reference": "cc://con1.../...",    // optional
+  "memberOf": ["cc://con1.../..."],   // optional
 
-  "createdAt": "2025-11-23T12:34:56Z"                 // required
+  "createdAt": "2025-11-23T12:34:56Z" // required
 }
 ```
 
@@ -87,7 +87,7 @@ Document に付与されるオプションの「論理キー名」。
 
 ### 5.2 `contentType` (string, optional)
 Document のメディアタイプを表す文字列。
-* `contentType` が省略された場合、デフォルトで `"application/concrnt.document+json"` と見なしてよい (SHOULD)。
+* `contentType` が省略された場合、デフォルトで `"application/json"` と見なしてよい (SHOULD)。
 
 ### 5.3 `schema` (string, optional)
 
