@@ -45,7 +45,7 @@ CIP-1 は以下のみを扱う。
 * 各フィールドの意味と制約
 * CDID の生成方法
 
-## 4. Concrnt Document 概要
+## 4. Concrnt Document
 
 Concrnt Document は、JSON オブジェクトとして表現される不変のレコードであり、概念的には次のような型を持つ。
 MIMEタイプは `application/concrnt.document+json` である。
@@ -142,7 +142,7 @@ timestampはDocumentのcreatedAtフィールドのUNIXタイムスタンプ（�
 DocumentはCCURI形式で参照できることが期待される。
 * CCURI形式: `cc://<owner>/<key or CDID>`
 
-## 8. Documentの署名
+## 8. Concrnt Signed Document
 
 Documentの発行を証明する必要がある場合、これに署名を付与することができる。
 署名は次の形式を持つ。
