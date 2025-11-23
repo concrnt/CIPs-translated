@@ -1,6 +1,4 @@
-# Concrnt Improvement Proposal CIP-0: Core
-
-The Concrnt Core Protocol Version 0.1 (Draft)
+# CIP-0: Core
 
 ## 0. Abstract
 
@@ -175,23 +173,25 @@ Affiliation Document の JSON 形式:
 
 ```json
 {
-  "signer": "con1<bech32-encoded-address>",
-  "type": "affiliation",
-  "domain": "example.com",
-  "signedAt": "2025-11-23T12:34:56Z"
+  "author": "con1<bech32-encoded-address>",
+  "schema": "https://schema.concrnt.net/affiliation.json",
+  "value": {
+    "domain": "example.com"
+  },
+  "createdAt": "2025-11-23T12:34:56Z"
 }
 ```
 
-* `signer`
-  Affiliation を署名したエンティティの CCID（＝本人）。
+* `author`
+  Affiliation を発行したエンティティの CCID。
 
-* `type`
-  常に `"affiliation"`。
+* `schema`
+  常に `"https://schema.concrnt.net/affiliation.json"` を指定する。
 
-* `domain`
+* `value.domain`
   所属先サーバの FQDN。
 
-* `signedAt`
+* `createdAt`
   Affiliation が署名された時刻（UTC, RFC3339 形式）。
 
 ### 7.2 Affiliation の署名
@@ -203,7 +203,10 @@ Affiliation Document は JSON 文字列としてシリアライズされ、エ�
 ```json
 {
   "document": "<JSON string above>",
-  "signature": "<hex-encoded-signature>"
+  "proof": {
+    "type": "concrnt-ecrecover-direct",
+    "signature": "<hex-encoded-signature>"
+  }
 }
 ```
 
