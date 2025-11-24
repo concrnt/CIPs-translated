@@ -41,6 +41,10 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
 
 クライアントは、Commitエンドポイントに対してCIP-1で定義されたConcrnt Signed DocumentをHTTP POSTリクエストのボディとして送信します。
 
+
+クライアントは、ドキュメントに含まれる`owner`フィールドで指定されるEntityを管理するConcrntサーバーに対してリクエストを送信しなければなりません (MUST)。
+送信されたdocument中のownerが管理外のEntityであった場合、CIP-2はこの挙動を定義しません。
+
 ### 3.2 レスポンス形式
 サーバーは、リクエストが成功した場合、HTTP 201 Created ステータスコードを返し、レスポンスボディに以下のJSONオブジェクトを含めます。
 

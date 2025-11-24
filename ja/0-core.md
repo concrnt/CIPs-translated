@@ -334,47 +334,6 @@ cc://<CCID>/<key>
 * `cc://con1alice/posts/2025-11-23/hello`
 * `cc://con1alice/` （`<key>` が空の場合）
 
-### 9.3 net.concrnt.core.resource の解決例
-
-**例1: 動的 API サーバ**
-
-```json
-{
-  "endpoints": {
-    "net.concrnt.core.resource": "/api/v1/resource/${uri}"
-  }
-}
-```
-
-`cc://con1alice/keys/profile` を解決する場合:
-
-1. クライアントは `cc://con1alice/keys/profile` を URL エンコードする。
-   → `cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile`
-
-2. テンプレートに埋め込む。
-
-   ```text
-   GET https://example.com/api/v1/resource/cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile
-   ```
-
-**例2: 静的ホスティングレイアウト**
-
-```json
-{
-  "endpoints": {
-    "net.concrnt.core.resource": "/${owner}/${key}"
-  }
-}
-```
-
-`cc://con1alice/posts/2025-11-23/hello` を解決する場合:
-
-```text
-GET https://static.example.com/con1alice/posts/2025-11-23/hello
-```
-
-`<key>` が空文字列の場合、`${key}` は空文字列に置き換えられます。
-末尾のスラッシュをどう扱うかはサーバ実装に依存します（例: `/con1alice/` とするか `/con1alice` とするか）。
 
 ## 10. net.concrnt.core.entity エンドポイント
 
@@ -423,7 +382,67 @@ GET https://example.com/entity/con1abc123...
 
 サーバは追加のメタ情報（例: 既知のプロフィール位置や上位プロトコルへのヒント）を含めてもよい (MAY)。
 
-## 11. Security Considerations
+
+## 11. net.concrnt.core.resource エンドポイント
+
+`net.concrnt.core.resource` エンドポイントは、CCURI に対応するリソースを取得するために使用されます。
+### 11.1 net.concrnt.core.resource の解決例
+
+**例1: 動的 API サーバ**
+
+```json
+{
+  "endpoints": {
+    "net.concrnt.core.resource": "/api/v1/resource/${uri}"
+  }
+}
+```
+
+`cc://con1alice/keys/profile` を解決する場合:
+
+1. クライアントは `cc://con1alice/keys/profile` を URL エンコードする。
+   → `cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile`
+
+2. テンプレートに埋め込む。
+
+   ```text
+   GET https://example.com/api/v1/resource/cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile
+   ```
+
+**例2: 静的ホスティングレイアウト**
+
+```json
+{
+  "endpoints": {
+    "net.concrnt.core.resource": "/${owner}/${key}"
+  }
+}
+```
+
+`cc://con1alice/posts/2025-11-23/hello` を解決する場合:
+
+```text
+GET https://static.example.com/con1alice/posts/2025-11-23/hello
+```
+
+`<key>` が空文字列の場合、`${key}` は空文字列に置き換えられます。
+末尾のスラッシュをどう扱うかはサーバ実装に依存します（例: `/con1alice/` とするか `/con1alice` とするか）。
+
+## 11.2 レスポンスの例
+サーバーは、Acceptヘッダが`application/json`であった場合、次のようなJSONレスポンスをHTTPステータス200で返却する**MUST**。
+
+```json
+{
+  "contentType": "application/json",
+  "schema": "https://schema.concrnt.net/resource.json",
+  "value": { ... },
+  "apis": {}
+}
+```
+
+その他のAcceptヘッダが指定された場合、サーバーは対応するMIMEタイプでリソースの生データを返却することができます。
+
+## 12. Security Considerations
 
 **鍵管理**
 
@@ -431,12 +450,12 @@ GET https://example.com/entity/con1abc123...
 * CCID は公開鍵から導出されるため、秘密鍵の漏洩はエンティティの乗っ取りに直結します。
   実装者は鍵生成・保管・バックアップについて十分に注意する必要があります。
 
-## 12. Abuse Potential
+## 13. Abuse Potential
 
 Concrnt Core 自体は単に名前解決の枠組みを提供するのみであり、
 スパム・嫌がらせ・違法コンテンツ等の問題は、主に上位プロトコルや運用ポリシーにおける課題となります。
 
-## 13. References
+## 14. References
 
 * RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
 * RFC 8174 – Clarifications to RFC 2119

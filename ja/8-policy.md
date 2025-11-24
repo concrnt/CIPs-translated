@@ -1,4 +1,4 @@
-# CIP-7 Policy
+# CIP-8 Policy
 
 ## 0. Abstract
 本仕様は、Concrntのリソースに対するアクセス制御ポリシーを定義する手段を提供する。
@@ -44,9 +44,10 @@ type Statement struct {
 record.read
 record.update // 同じキーで作成を許可する
 record.delete
-record.associate
-record.disassociate
-collection.write // CIP-5
+record.associate // CIP-6
+record.retract // CIP-6
+collection.distribute // CIP-5
+collection.retract // CIP-5
 
 ## 5. 演算子
 
@@ -157,5 +158,8 @@ const: string output: bool
 
 ## 6. Policyの評価
 
+policyはリソースにアタッチされ、リソースに対する操作が行われる際に評価される。 評価の結果、許可される場合はtrue、拒否される場合はfalseが返される。
+
+// TODO: 評価順について
 
 
