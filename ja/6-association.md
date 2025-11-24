@@ -16,9 +16,13 @@
 
 Association は CIP-1 の Document を拡張し、`associate` フィールドに関連先の CCURI を記載します。`associate` の `owner` は関連先 Document の `owner` と同一でなければなりません（MUST）。複数の関連付けを行う場合は、別々の Association Document を作成します。クライアントは関連先の `owner` を管理するサーバに対して、CIP-2 の Commit エンドポイントへ送信します。
 
+`associate` で示される Document のスキーマやバリアントを用いて関連種別（返信、いいね、フォローなど）を表現できます。必要に応じて `schema` 内で追加メタデータを定義してください。
+
 ## 4. 関連の取得
 
 サーバはリソースの応答に関連一覧 API のパスを含めてもかまいません（MAY）。例として、`apis.associations` は関連付けられた Association Document の一覧を返し、`apis.associationCounts` は `schema` ごとの件数を返します。クエリパラメータで `schema` や `author` を指定して絞り込みを行うことができます。ページングやソート方法は実装が定義します。
+
+遠隔サーバに存在する関連を取得する場合、サーバは対象ドメインの API を参照し、その結果を中継する実装を採用してもかまいません（MAY）。中継時には応答の署名や Affiliation を検証し、改ざんを防ぎます。
 
 ## 5. セキュリティと整合性
 

@@ -16,6 +16,8 @@
 
 Commit は、`.well-known/concrnt` において `net.concrnt.core.commit` として広告される HTTP POST エンドポイントです。クライアントは `owner` で示されるエンティティを管理するサーバに対し、署名済み Document を提出します。サーバは署名と権限を検証し、受理時に CDID やリソース URL を応答します。
 
+`owner` がサーバ管理外である場合の挙動は上位仕様に委ねられますが、CIP-5/6 などからの代理送信を受け付ける場合は、そのポリシーを明示する必要があります。
+
 ## 4. エンドポイント広告
 
 サーバは `.well-known/concrnt` に次のような項目を含めます。
@@ -38,6 +40,8 @@ Commit は、`.well-known/concrnt` において `net.concrnt.core.commit` とし
 
 クライアントは `Content-Type: application/concrnt.signed-document+json` を指定し、CIP-1 で定義された Concrnt Signed Document を POST します。`owner` フィールドに記載されたエンティティを管理するサーバに送信しなければなりません（MUST）。署名者が所有者と異なる場合の権限付与は本仕様の範囲外です。
 
+`Accept` ヘッダを指定しない場合、サーバは JSON で応答することを想定します。リクエストボディが不正な JSON である、署名が検証できない、または `owner` が欠落している場合、サーバは 400 Bad Request を返します。
+
 ## 6. レスポンス
 
 受理に成功した場合、サーバは HTTP 201 Created を返し、以下の JSON を含めます。
@@ -51,6 +55,8 @@ Commit は、`.well-known/concrnt` において `net.concrnt.core.commit` とし
 ```
 
 署名が無効である場合や `owner` が管理外である場合は 403 Forbidden、入力が不正な場合は 400 Bad Request を返します。サーバ内部の障害は 5xx で報告します。重複する再送に対しては同一 CDID を返すなど、冪等性を保つことが望まれます（SHOULD）。
+
+`uri` には `key` がある場合は `cc://<owner>/<key>` を、ない場合は `cc://<owner>/<cdid>` を返します。`url` は `net.concrnt.core.resource` で得られる実際の取得 URL を示します。
 
 ## 7. 削除要求
 

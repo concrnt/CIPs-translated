@@ -16,9 +16,13 @@
 
 Collection は CIP-1 の Document を用いて表現します。`contentType` に `application/concrnt.collection+json` を指定し、`value` にタイトルや説明などのメタデータを含めます。サーバはリソースへアクセスがあった際、`value` を `metadata` としてコピーした Collection Document を応答として返します。
 
+メタデータに含めるフィールドは上位仕様で定義しますが、タイトル、説明、カバー画像などの情報を含めることが想定されています。Collection 自体にも CCURI が割り当てられ、`cc://<owner>/<collection-key>` で参照されます。
+
 ## 4. Collection の操作
 
 サーバは Collection へのアクセスに対し、メタデータと API エンドポイントを記述した JSON を返します。`apis.items.url` にはアイテム一覧を取得するパスを示し、クライアントはこれを用いてアイテムをページング取得できます。順序やソート方法はサーバ実装に依存しますが、最新順で返すことが推奨されます（SHOULD）。
+
+一覧の応答には、各アイテムの CCURI、作成時刻、必要に応じて抜粋やメタ情報を含めます。ページングのために `next` や `cursor` を返してもかまいません（MAY）。
 
 ## 5. Timeline
 
@@ -27,6 +31,8 @@ Timeline は時系列データ向けの Collection であり、`contentType` に
 ## 6. 要素の追加
 
 Document は `memberOf` フィールドを用いて所属する Collection や Timeline の CCURI を宣言できます。サーバは `memberOf` を解釈し、管理下の Collection に追加しなければなりません（MUST）。対象が別サーバにある場合、サーバは CIP-2 の Commit エンドポイントに代理送信してもかまいません（MAY）。重複や衝突が発生する場合の優先規則は実装が定義します。
+
+サーバは `memberOf` の各 CCURI について所有権やポリシーを確認し、無権限の追加を拒否する必要があります。代理送信を行う場合は、送信結果をクライアントに通知するか、一定回数再試行するポリシーを設けます。
 
 ## 7. セキュリティと一貫性の考慮
 

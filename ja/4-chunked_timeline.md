@@ -20,17 +20,25 @@
 
 Chunked Timeline Document はタイムラインのメタデータと、チャンクを取得するためのパスを含む JSON オブジェクトです。`version`、`chunkSize`、`firstChunk` は必須で、`ascending` または `descending` に各チャンクの Iterator と Body のパスを含めます。`metadata` にはタイトルや説明など任意の情報を置くことができます。
 
+`chunkSize` は秒単位でチャンク境界を定めます。`firstChunk` は最も古いチャンク番号、`lastChunk` が存在する場合は最新チャンク番号を示します。`ascending` と `descending` の両方を提供することで、クライアントが取得方向を選択できます。
+
 ## 5. Iterator Node
 
 Iterator Node は最新の Body Node を指すチャンク番号を返します。クライアントは `firstChunk` から `lastChunk`（存在する場合）までの範囲で Iterator にアクセスできます。レスポンスは本文を持たないプレーンテキストまたは JSON とし、チャンク番号を一意に返します。
+
+HTTP レスポンスには `Content-Type: text/plain` または `application/json` を設定します。キャッシュ可能な場合は `Cache-Control` ヘッダを用います。
 
 ## 6. Body Node
 
 Body Node は指定されたチャンクに含まれるエントリを配列で返します。エントリはタイムスタンプ順に並べられ、`ascending` では昇順、`descending` では降順です。エントリは本文データを直接含めても、外部リソースへの参照を含めても構いません。空のチャンクは空配列で返します。
 
+Body の `Content-Type` は `application/json` とし、各エントリのスキーマは上位仕様が定義します。ページングを設ける場合は、同一チャンク内で分割するのではなく、チャンク境界を細かく設定することが推奨されます。
+
 ## 7. チャンク ID の計算
 
 チャンク ID は投稿の UNIX タイムスタンプを `chunkSize` で割った商の整数部分です。時刻は UTC で扱い、丸めは切り捨てとします。例として、`chunkSize` が 300 秒で `"2025-11-23T12:34:56Z"` の投稿は UNIX 時刻 1761280496 から 300 で割った 5870934 がチャンク ID になります。
+
+新規投稿が到着した場合、最新のチャンク番号は増加する可能性があります。クライアントは Iterator を再取得し、最新の Body を追跡します。
 
 ## 8. エラー処理とキャッシュ
 
