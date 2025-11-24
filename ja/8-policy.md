@@ -1,165 +1,42 @@
-# CIP-8 Policy
+# CIP-8: Policy
 
 ## 0. Abstract
-本仕様は、Concrntのリソースに対するアクセス制御ポリシーを定義する手段を提供する。
+
+本仕様は、Concrnt リソースに対するアクセス制御ポリシーを定義するための枠組みを示します。ポリシードキュメントの構造、評価の流れ、主要な演算子とアクションを述べ、プログラマブルな権限制御を可能にします。
 
 ## 1. Status of This Memo
 
-Concrnt プロジェクトにより公開されるバージョン付き仕様であり、
-実装者およびプロトコル設計者を対象とする。
-
-本仕様はドラフトであり、後方互換性のない変更が行われる可能性がある。
-実装者は CIP-番号とバージョンを確認の上、適宜追従すること。
+本ドキュメントは Concrnt Policy のインターネット・ドラフトです。Concrnt プロジェクトが公開するバージョン付き仕様であり、実装者およびプロトコル設計者を対象とします。ドラフト期間中は後方互換性のない変更が行われる可能性があるため、実装者は CIP 番号とバージョンを確認し、更新に追従しなければなりません（MUST）。
 
 ## 2. 表記規則
 
-このドキュメントにおける以下の語は、必ず大文字で記述される場合、
-BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
+大文字のキーワードは BCP 14 [RFC2119] [RFC8174] にしたがって解釈されます。
 
-> MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
-> RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
+## 3. イントロダクション
 
-## 3. Introduction
-Concrntでは、リソースの読み書きをポリシーと呼ばれる仕組みを用いてプログラマブルに設定することができる。 これにより、バックエンドに手を加えなくても鍵垢・サークルツイート・簡易的なDMなどを実装することを目的としている。
+Concrnt では、バックエンドの改修を伴わずに鍵付きアカウントや限定公開を実現するため、リソースにポリシーを付与します。ポリシーはリソースにアタッチされ、読み書きや関連付けなどの操作が行われる際に評価されます。
 
-## 4. Policy Document
+## 4. Policy Document の構造
 
-TODO: この構造を仕様として定義する
-```
-type Policy struct {
-	Statements map[string]Statement `json:"statements"`
-	Defaults   map[string]bool      `json:"defaults"`
-}
+ポリシーは JSON オブジェクトで表現され、`statements` と `defaults` から構成されます。`statements` は名前付きの Statement を持ち、条件式と優先度を含みます。`defaults` はアクションごとの初期許可/拒否を示します。各 Statement は `dominant`, `defaultOnTrue`, `defaultOnFalse`, `condition` を持ち、条件に基づき許可・拒否を決定します。
 
-type Statement struct {
-	Dominant       bool `json:"dominant"`
-	DefaultOnTrue  bool `json:"defaultOnTrue"`
-	DefaultOnFalse bool `json:"defaultOnFalse"`
-	Condition      Expr `json:"condition"`
-}
-```
+## 5. アクション
 
-## 5. Actions
+代表的なアクションには、レコードの読み取りや更新、削除、関連付け、コレクション配布などがあります。実装は必要に応じてアクション名を拡張できますが、意味を明確にし一貫した名前を用いるべきです（SHOULD）。
 
-record.read
-record.update // 同じキーで作成を許可する
-record.delete
-record.associate // CIP-6
-record.retract // CIP-6
-collection.distribute // CIP-5
-collection.retract // CIP-5
+## 6. 演算子
 
-## 5. 演算子
+条件式は論理演算や比較演算、コンテキスト読み出しを組み合わせて構築します。`And`、`Or`、`Not` といった論理演算のほか、`Eq`、`Contains`、`Const` を備えます。`LoadParam` や `LoadDocument` などの演算子で、ポリシーに渡されたパラメータや対象ドキュメントのフィールドを参照できます。サーバのドメインや CSID を得る `DomainFQDN`、`DomainCSID`、呼び出しユーザーの種別やタグを判定する演算子も提供されます。
 
-And
-input: bool[] output: bool
+## 7. 評価の流れ
 
-inputの全ての要素がtrueと評価されたときにtrueを返します
+評価は、対象リソースとアクションに対して適用される Statement を順に処理し、条件式を評価します。`dominant` が真の Statement が成立した場合、その結果を即座に反映するなど、優先度を実装で定義します。条件に一致しない場合は `defaults` の値に従います。実装は評価順と短絡のルールを文書化し、予期しない結果を避ける必要があります。
 
-Or
-input: bool[] output: bool
+## 8. セキュリティとプライバシー
 
-inputのうち1つでもfalseと評価された要素があるときfalseを返します
+ポリシーはリソース保護の中心要素であるため、改ざん防止のために署名や認可されたチャネルで配布することが望まれます。評価に用いる外部リソースやパラメータが信頼できるものであることを確認してください。デフォルト許可を採用する場合は意図しない情報漏えいに注意し、デフォルト拒否を基本とする構成を推奨します。
 
-Not
-input: bool output: bool
+## 9. 参考文献 (References)
 
-inputのnotなるboolを返します
-
-Eq
-input: [T, T] output: bool
-
-2つの引数の値が等しいときtrueを返します
-
-Const
-const: T output: T
-
-constパラメータに与えられた値をそのまま返します
-
-Contains
-input: [T[], T] output: bool
-
-inputのT[]の中にTとなる要素があればtrueを返します
-
-LoadParam
-const: string output: T
-
-このポリシーとペアで設定されているパラメーターから値を読み出します
-
-LoadDocument
-const: string output: T
-
-このポリシーが呼び出されたときに評価中のDocumentから値を読み出します
-
-LoadSelf
-const: string output: T
-
-このポリシーがアタッチされているリソースのDocumentから値を読み出します
-
-LoadResource
-const: string output: T
-
-このポリシーが呼び出されたときに評価中のリソースのDocumentから値を読み出します
-
-DomainFQDN
-output: string
-
-このポリシーを評価中のサーバーのドメイン名を返します
-
-DomainCSID
-output: string
-
-このポリシーを評価中のサーバーのCSIDを返します
-
-IsCCID
-input: string output: bool
-
-inputで与えられた文字列がCCIDとしてパースできるかを返します
-
-IsCSID
-input: string output: bool
-
-inputで与えられた文字列がCSIDとしてパースできるかを返します
-
-IsCKID
-input: string output: bool
-
-inputで与えられた文字列がCKIDとしてパースできるかを返します
-
-IsRequesterLocalUser
-output: bool
-
-このポリシーを呼び出しているユーザーが、当サーバーが現住所であるユーザーであるかどうかを返します
-
-IsRequesterRemoteUser
-output: bool
-
-このポリシーを呼び出しているユーザーが、当サーバーが現住所ではないユーザーであるかどうかを返します
-
-IsRequesterGuestUser
-output: bool
-
-このポリシーの呼び出しが無認証アクセスであるかを返します
-
-RequesterHasTag
-const: string output: bool
-
-このポリシーの呼び出しユーザーが、constで指定したタグを持っているかどうかを返します
-
-RequesterID
-output: string
-
-このポリシーの呼び出しユーザーのCCIDを返します
-
-RequesterDomainHasTag
-const: string output: bool
-
-このポリシーの呼び出しユーザーの所属ドメインが、constで指定したタグを持っているかどうかを返します
-
-## 6. Policyの評価
-
-policyはリソースにアタッチされ、リソースに対する操作が行われる際に評価される。 評価の結果、許可される場合はtrue、拒否される場合はfalseが返される。
-
-// TODO: 評価順について
-
-
+[RFC2119] Bradner, S., “Key words for use in RFCs to Indicate Requirement Levels”, March 1997.  
+[RFC8174] Leiba, B., “Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words”, May 2017.

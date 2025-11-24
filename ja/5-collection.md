@@ -1,86 +1,38 @@
-# CIP-5 Collection
+# CIP-5: Collection
 
 ## 0. Abstract
-この仕様では、Concrnt上で複数のDocumentを論理的にまとめて扱うための **Collection** フォーマットを定義する。
-また、その中でも特に時系列データを効率的に扱うための **Timeline** フォーマットについても定義する。
+
+本仕様では、複数の Concrnt Document を論理的にまとめる Collection と、時系列データを効率的に扱う Timeline の概念を定義します。メタデータの公開とアイテム一覧の取得方法を示し、コレクションを介した配信を可能にします。
 
 ## 1. Status of This Memo
 
-Concrnt プロジェクトにより公開されるバージョン付き仕様であり、
-実装者およびプロトコル設計者を対象とする。
-
-本仕様はドラフトであり、後方互換性のない変更が行われる可能性がある。
-実装者は CIP-番号とバージョンを確認の上、適宜追従すること。
+本ドキュメントは Concrnt Collection のインターネット・ドラフトです。Concrnt プロジェクトが公開するバージョン付き仕様であり、実装者およびプロトコル設計者を対象とします。ドラフト期間中に後方互換性のない変更が行われる可能性があるため、実装者は CIP 番号とバージョンを確認し、更新に追従しなければなりません（MUST）。
 
 ## 2. 表記規則
 
-このドキュメントにおける以下の語は、必ず大文字で記述される場合、
-BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
+大文字のキーワードは BCP 14 [RFC2119] [RFC8174] にしたがって解釈されます。
 
-> MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
-> RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
+## 3. Collection の作成
 
-## 3. Collection
+Collection は CIP-1 の Document を用いて表現します。`contentType` に `application/concrnt.collection+json` を指定し、`value` にタイトルや説明などのメタデータを含めます。サーバはリソースへアクセスがあった際、`value` を `metadata` としてコピーした Collection Document を応答として返します。
 
-### 3.1 Collectionの作成
+## 4. Collection の操作
 
-CIP-1で定義されたConcrnt Documentを用いて、Collectionを作成することができる。
-Content-Typeに`application/concrnt.collection+json`を指定する。
+サーバは Collection へのアクセスに対し、メタデータと API エンドポイントを記述した JSON を返します。`apis.items.url` にはアイテム一覧を取得するパスを示し、クライアントはこれを用いてアイテムをページング取得できます。順序やソート方法はサーバ実装に依存しますが、最新順で返すことが推奨されます（SHOULD）。
 
-### 3.2 Collectionに対する操作
+## 5. Timeline
 
-レスポンス例:
-```
-{
-    "metadata": { // document中のvalueフィールドがそのまま入る
-        "title": "My Collection",
-        "description": "A collection of my favorite posts"
-    },
-    "apis": {
-        "items": {
-            "url": "/api/v1/collection/<id>/list",
-        }
-    }
-}
-```
+Timeline は時系列データ向けの Collection であり、`contentType` に `application/chunked-timeline+json` を指定します。アクセス時には CIP-4 で定義された Chunked Timeline Document を生成し、`value` を `metadata` として提供します。
 
-Collectionにアクセスした場合、Concrntサーバーはdocument内のvalueを全てmetadataフィールドにコピーし、Collection Documentを生成して返却します。
+## 6. 要素の追加
 
-apis.items.urlにアクセスすることで、Collection内のアイテム一覧を取得できます。
+Document は `memberOf` フィールドを用いて所属する Collection や Timeline の CCURI を宣言できます。サーバは `memberOf` を解釈し、管理下の Collection に追加しなければなりません（MUST）。対象が別サーバにある場合、サーバは CIP-2 の Commit エンドポイントに代理送信してもかまいません（MAY）。重複や衝突が発生する場合の優先規則は実装が定義します。
 
-## 4. Timeline
+## 7. セキュリティと一貫性の考慮
 
-CIP-1で定義されたConcrnt Documentを用いて、Timelineを作成することができる。
-Content-Typeに `application/chunked-timeline+json` を指定する。
+`memberOf` を信頼して自動配布する場合、権限検証を行い、無権限の追加を拒否する必要があります。リスト API にはレート制限や認可を適用し、偏った配信やスパムを抑制してください。Collection の整合性を保つため、追加や削除のイベントを監査ログに記録することが望まれます。
 
-該当リソースにアクセスした場合、Concrntサーバーはdocument内のvalueを全てmetadataフィールドにコピーし、Chunked Timeline Documentを生成して返却します。
+## 8. 参考文献 (References)
 
-## 5. Collection/Timelineへの要素の追加
-
-CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの要素の追加を定義する。
-
-```json
-{
-  "key": "profile",                   // CIP-1
-  "contentType": "application/json",  // CIP-1
-  "schema": "https://...",            // CIP-1
-  "value": { ... },                   // CIP-1
-
-  "author": "con1...",                // CIP-1
-  "owner": "con1...",                 // CIP-1
-
-  "memberOf": [                       //CIP-5
-    "cc://<CCID>/<collection-key>",
-    "cc://<CCID>/<timeline-key>"
-  ],
-
-  "createdAt": "2025-11-23T12:34:56Z" // CIP-1
-}
-```
-
-新しくmemberOfフィールドを追加し、Documentが所属するCollection/TimelineのCCURIを配列で指定できるようにする。
-サーバーはmemberOfフィールドの内容に基づき、該当するCollection/TimelineにDocumentを追加しなければならない(MUST)。
-
-memberOfフィールドで指定されるCCURIは、そのサーバーが管理しているものでなくてもよい。その場合、サーバーはこのドキュメントを該当するサーバーの、CIP-2で定義されたcommitエンドポイントに対して代理で送信しなければならない(MUST)。
-
-
+[RFC2119] Bradner, S., “Key words for use in RFCs to Indicate Requirement Levels”, March 1997.  
+[RFC8174] Leiba, B., “Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words”, May 2017.

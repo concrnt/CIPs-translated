@@ -1,100 +1,47 @@
-# CIP-4 Chunked Timeline
+# CIP-4: Chunked Timeline
 
 ## 0. Abstract
-この仕様では、フィードをチャンクに分割し、効率的に配信・取得するための **Chunked Timeline** フォーマットを定義する。
+
+本仕様では、大規模なフィードを時間軸に沿ってチャンクに分割し、効率的に配信・取得するための Chunked Timeline フォーマットを定義します。タイムラインを複数のノードで表現し、部分取得や CDN 配信を容易にします。
 
 ## 1. Status of This Memo
 
-このドキュメントは、Concrnt プロジェクトにより公開されるバージョン付き仕様ではあるが、
-CIP-4はその適用範囲をConcrntプロジェクトのみに限定せず、広く一般に利用可能な仕様として提供されることを目的としている。
-
-本仕様はドラフトであり、後方互換性のない変更が行われる可能性がある。
-実装者は CIP-番号とバージョンを確認の上、適宜追従すること。
+本ドキュメントは Concrnt Chunked Timeline のインターネット・ドラフトです。Concrnt プロジェクトが公開するバージョン付き仕様であり、実装者を対象とします。ドラフト期間中に後方互換性のない変更が行われる可能性があるため、実装者は CIP 番号とバージョンを確認し、更新に追従しなければなりません（MUST）。
 
 ## 2. 表記規則
 
-このドキュメントにおける以下の語は、必ず大文字で記述される場合、
-BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
+大文字のキーワードは BCP 14 [RFC2119] [RFC8174] にしたがって解釈されます。
 
-> MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
-> RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
+## 3. イントロダクション
 
-
-## 3. Introduction
-RSSやAtomのような従来のフィードフォーマットは、全体を一つのドキュメントとして扱うため、大規模なタイムラインの配信や部分的な取得に非効率的である。
-Chunked Timeline フォーマットは、タイムラインを複数のチャンクに分割し、かつ間接参照を用いることで、「ある時期からの最新の投稿のみを取得する」などの効率的なアクセスを可能にする。
-
-また、これらは動的に生成される他、静的にホスティングされることも可能であり、CDNを活用した配信も容易になる。
+従来のフィード形式では全体を単一ドキュメントで扱うため、部分取得や差分取得が非効率でした。Chunked Timeline はフィードを固定長のチャンクに分割し、最新部分へのポインタを Iterator Node が示します。クライアントは必要なチャンクだけを取得することでトラフィックを削減できます。
 
 ## 4. Chunked Timeline Document
 
-この仕様では、Chunked Timeline Documentとそれが指し示すIterator Node、そしてBody Nodeについて説明しています。
+Chunked Timeline Document はタイムラインのメタデータと、チャンクを取得するためのパスを含む JSON オブジェクトです。`version`、`chunkSize`、`firstChunk` は必須で、`ascending` または `descending` に各チャンクの Iterator と Body のパスを含めます。`metadata` にはタイトルや説明など任意の情報を置くことができます。
 
-Chunked Timeline Documentは、Chunked Timelineの表現であり、フィードに関するメタデータとそれに関連付けられているIterator Node及びBody Nodeへの解決方法を提供します。
+## 5. Iterator Node
 
-Chunked Timeline Documentは、以下のようなJSON構造で表現されます。また、MIMEタイプは `application/chunked-timeline+json`です。
+Iterator Node は最新の Body Node を指すチャンク番号を返します。クライアントは `firstChunk` から `lastChunk`（存在する場合）までの範囲で Iterator にアクセスできます。レスポンスは本文を持たないプレーンテキストまたは JSON とし、チャンク番号を一意に返します。
 
-```json
-{
-    "version": "1.0",                        // required
+## 6. Body Node
 
-    "chunkSize": 300,                        // required
-    "firstChunk": 5785524,                   // required
-    "lastChunk": 5890644,                    // optional
+Body Node は指定されたチャンクに含まれるエントリを配列で返します。エントリはタイムスタンプ順に並べられ、`ascending` では昇順、`descending` では降順です。エントリは本文データを直接含めても、外部リソースへの参照を含めても構いません。空のチャンクは空配列で返します。
 
-    "ascending": {                           // optional
-        "iterator": "/asc/itr/{chunk}",      // required
-        "body": "/asc/body/{chunk}",         // required
-    },
+## 7. チャンク ID の計算
 
-    "descending": {                          // optional
-        "iterator": "/desc/itr/{chunk}",     // required
-        "body": "/desc/body/{chunk}",        // required
-    },
+チャンク ID は投稿の UNIX タイムスタンプを `chunkSize` で割った商の整数部分です。時刻は UTC で扱い、丸めは切り捨てとします。例として、`chunkSize` が 300 秒で `"2025-11-23T12:34:56Z"` の投稿は UNIX 時刻 1761280496 から 300 で割った 5870934 がチャンク ID になります。
 
-    "metadata": {                            // optional
-        "title": "User's Timeline",          // optional
-        "description": "A chunked timeline", // optional
-    }
-}
-```
+## 8. エラー処理とキャッシュ
 
-### 4.1. Iterator Node
+範囲外のチャンクを要求された場合、サーバは 404 Not Found を返します。チャンク内容が更新されない場合は適切なキャッシュヘッダを付与し、CDN 配信を可能にします。最新チャンクが頻繁に更新される場合でも、Iterator を通じて新しい Body の位置を提供します。
 
-iteratorノードは、該当チャンクのうち、最新のデータを含むbodyノードへの参照を提供します。
-通常、iteratorノードはチャンクIDをのみを返却します。
+## 9. セキュリティに関する考慮事項
 
-`/asc/itr/5785524` へのリクエストに対するレスポンス例:
-```txt
-5785524
-```
+Chunked Timeline は公開フィードを前提としますが、改ざんや差し替えを防ぐため HTTPS を利用し、キャッシュの検証を行うことが望まれます。エントリが外部参照を含む場合、その可用性と整合性を確認する責任はクライアントにあります。
 
-iteratorノードは、chunked timeline documentのfirstChunkから、lastChunkまでの範囲ですべてアクセス可能でなければなりません (MUST)。
+## 10. 参考文献 (References)
 
-### 4.2. Body Node
-bodyノードは、該当チャンクに含まれる実際の投稿データおよび投稿への参照を提供します。
-
-`/asc/body/5785524` へのリクエストに対するレスポンス例:
-```json
-[
-    {
-        "timestamp": "2025-11-23T12:34:56Z",
-        "content": "Hello, world!"
-    },
-    {
-        "timestamp": "2025-11-23T12:30:00Z",
-        "href": "https://example.com/posts/12345"
-    }
-]
-```
-
-bodyノードのレスポンスは、チャンクに含まれる投稿を全て含む配列でなければなりません (MUST)。また、チャンクに含まれない投稿を含んでもよい (MAY)。
-bodyノードのレスポンスは、ascendingノードであれば昇順、descendingノードであれば降順でエントリが並んだ配列を返却しなければなりません (MUST)。
-
-## 5. Chunk IDの計算方法
-Chunk IDは、投稿のタイムスタンプに基づいて計算されます。
-具体的には、投稿のUNIXタイムスタンプをチャンクサイズで割り、その商を整数として扱います。
-例えば、チャンクサイズが300秒（5分）の場合、タイムスタンプが "2025-11-23T12:34:56Z" の投稿は、UNIXタイムスタンプに変換すると 1761280496 となり、これを300で割ると 5870934.986666... となります。
-整数部分の 5870934 がChunk IDとなります。
-
-
+[RFC2119] Bradner, S., “Key words for use in RFCs to Indicate Requirement Levels”, March 1997.  
+[RFC8174] Leiba, B., “Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words”, May 2017.  
+[RFC7231] Fielding, R., et al., “Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content”, June 2014.

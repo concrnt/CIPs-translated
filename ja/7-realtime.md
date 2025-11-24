@@ -1,28 +1,20 @@
-# CIP-7 Realtime API
+# CIP-7: Realtime API
 
 ## 0. Abstract
-本仕様は、Concrntをホストするサーバーが提供するエンドポイントを拡張し、サーバーで発生したリソースの変更イベントをリアルタイムにクライアントに通知する手段を提供する。
+
+本仕様は、Concrnt サーバがリソースの変更イベントをリアルタイムに通知するための Realtime エンドポイントを定義します。WebSocket を用いてクライアントが購読し、作成や削除イベントを受け取ります。
 
 ## 1. Status of This Memo
 
-Concrnt プロジェクトにより公開されるバージョン付き仕様であり、
-実装者およびプロトコル設計者を対象とする。
-
-本仕様はドラフトであり、後方互換性のない変更が行われる可能性がある。
-実装者は CIP-番号とバージョンを確認の上、適宜追従すること。
+本ドキュメントは Concrnt Realtime API のインターネット・ドラフトです。Concrnt プロジェクトが公開するバージョン付き仕様であり、実装者およびプロトコル設計者を対象とします。ドラフト期間中に後方互換性のない変更が行われる可能性があるため、実装者は CIP 番号とバージョンを確認し、更新に追従しなければなりません（MUST）。
 
 ## 2. 表記規則
 
-このドキュメントにおける以下の語は、必ず大文字で記述される場合、
-BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
+大文字のキーワードは BCP 14 [RFC2119] [RFC8174] にしたがって解釈されます。
 
-> MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
-> RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
+## 3. エンドポイント広告
 
-## 3. Realtime エンドポイント
-
-Concrnt サーバーは、HTTP GET リクエストを受け付けるエンドポイントを提供する。
-これは、CIP-0で定義されるサービスディスカバリにおいて、"net.concrnt.core.realtime" エンドポイント名で広告されなければなりません (MUST)。
+サーバは `.well-known/concrnt` に `net.concrnt.core.realtime` を含め、WebSocket ハンドシェイクを受け付けるパスを示します。
 
 ```json
 {
@@ -30,57 +22,54 @@ Concrnt サーバーは、HTTP GET リクエストを受け付けるエンドポ
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
     "net.concrnt.core.entity": "/entity/${ccid}",
-    "net.concrnt.core.resource": "/resource/${uri}"
+    "net.concrnt.core.resource": "/resource/${uri}",
     "net.concrnt.core.realtime": "/realtime"
   }
 }
 ```
 
-realtimeエンドポイントは、websocketプロトコルを使用してクライアントとサーバー間の双方向通信を確立します。
+## 4. 接続と購読
 
-
-## 3.1 購読の開始
-クライアントは、realtimeエンドポイントに対してHTTP GETリクエストを送信し、WebSocketハンドシェイクを開始します。
-
-接続が確立された後、クライアントは以下のJSONメッセージをサーバーに送信して、特定のリソースの変更イベントの購読を開始します。
+クライアントは広告されたパスに対して WebSocket 接続を確立します。接続後、購読を開始するために次のような JSON メッセージを送信します。
 
 ```json
 {
-    "action": "subscribe",
-    "resources": [
-        "<CCURI>",
-        "<CCURI>",
-        ...
-    ]
+  "action": "subscribe",
+  "resources": [
+    "cc://<CCID>/<key>",
+    "cc://<CCID>/<collection>"
+  ]
 }
 ```
 
-uriにcollection及びtimelineリソースを指定することで、そのリソース配下に新たに発生したDocumentの追加イベントを購読できます。
-複数回Susbcribeリクエストが送信された場合、サーバーは最新の購読リストを保持し、以前の購読リストは上書きされます。
+複数回送信された場合、サーバは最新の購読リストに置き換えます。購読対象が別サーバにある場合、代理で購読するかどうかは実装に委ねられます。
 
-CCURIに指定するリソースは、そのサーバーが管理しているものでなくてもよい。
-外部リソースが要求された場合、サーバーはそのリソースを所有するサーバーのrealtimeエンドポイントに対して代理で購読リクエストを送信し、イベントを中継しなければなりません (MUST)。
+## 5. イベント配信
 
-## 3.2 イベントの受信
-サーバーは、購読されたリソースに変更が発生した場合、以下のJSONメッセージをクライアントに送信します。
+購読したリソースに変更が発生したとき、サーバは次の形式で通知します。
 
 ```json
 {
-    "event": "created",
-    "source": "<CCURI>", // 変更が発生したリソースのCCURI
-    "resource": "<CCURI>", // 変更されたリソースのCCURI
-    "signed_document": { ... } // CIP-1で定義されたConcrnt Signed Document
+  "event": "created",
+  "source": "cc://<CCID>/<key>",
+  "resource": "cc://<CCID>/<changed>",
+  "signed_document": { ... }
 }
 ```
 
-event: 変更イベントの種類を示す文字列。
-とりうる値は以下の通りです。
-* "created": 新しいDocumentが作成されたことを示す。
-* "deleted": Documentが削除されたことを示す。
+`event` には `"created"` または `"deleted"` を用います。`signed_document` は CIP-1 の Signed Document であり、必要に応じて省略されることがあります。順序や再送を管理するためのフィールドを追加しても構いません（MAY）。
 
-source: 変更が発生したリソースのCCURI。
-resource: 変更されたリソースのCCURI。
-signed_document: CIP-1で定義されたConcrnt Signed Document。
-但し、documentが保護されているなどの場合において、このフィールドを省略してもよい (MAY)。
+## 6. ハートビートと切断
 
+長時間の接続維持のため、サーバとクライアントは定期的に ping/pong などのハートビートを交換することが望まれます（SHOULD）。切断後はクライアントが再接続し、必要に応じて購読を再送します。
 
+## 7. セキュリティに関する考慮事項
+
+Realtime 接続は TLS 上で確立し、認証が必要な場合はトークンやクッキーで認証します。過剰な購読やイベント送出はレート制限を設け、悪用を防ぎます。代理購読を行う場合は中継先の信頼性を確認し、漏洩や改ざんに注意してください。
+
+## 8. 参考文献 (References)
+
+[RFC2119] Bradner, S., “Key words for use in RFCs to Indicate Requirement Levels”, March 1997.  
+[RFC8174] Leiba, B., “Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words”, May 2017.  
+[RFC6455] Fette, I. and A. Melnikov, “The WebSocket Protocol”, December 2011.  
+[RFC7231] Fielding, R., et al., “Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content”, June 2014.

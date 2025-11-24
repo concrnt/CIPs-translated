@@ -1,29 +1,24 @@
 # CIP-2: Commit
 
 ## 0. Abstract
-本ドキュメントでは、Concrntをホストするサーバーが提供するエンドポイントを拡張し、サーバーが管理するリソースを変更するための手段を提供する。
+
+本ドキュメントでは、Concrnt サーバが提供するリソースを書き換えるための Commit エンドポイントを定義します。CIP-1 の Concrnt Signed Document を POST し、サーバが管理するリソースの作成・更新・削除を要求します。
 
 ## 1. Status of This Memo
 
-このドキュメントは Concrnt Document フォーマットの仕様を定義する。
-
-Concrnt プロジェクトにより公開されるバージョン付き仕様であり、
-実装者およびプロトコル設計者を対象とする。
-
-本仕様はドラフトであり、後方互換性のない変更が行われる可能性がある。
-実装者は CIP-番号とバージョンを確認の上、適宜追従すること。
+本ドキュメントは Concrnt Commit プロトコルのインターネット・ドラフトです。Concrnt プロジェクトが公開するバージョン付き仕様であり、実装者およびプロトコル設計者を対象とします。ドラフト期間中は後方互換性のない変更が行われる可能性があるため、実装者は CIP 番号とバージョンを確認し、更新に追従しなければなりません（MUST）。
 
 ## 2. 用語 (Terminology)
 
-このドキュメントにおける以下の語は、必ず大文字で記述される場合、
-BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
+このドキュメントにおける大文字のキーワードは BCP 14 [RFC2119] [RFC8174] にしたがって解釈されます。その他の用語は CIP-0 および CIP-1 の定義を継承します。
 
-> MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
-> RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
+## 3. 概要
 
-## 3. Commit エンドポイント
-Concrnt サーバーは、HTTP POST リクエストを受け付けるエンドポイントを提供する。
-これは、CIP-0で定義されるサービスディスカバリにおいて、"net.concrnt.core.commit" エンドポイント名で広告されなければなりません (MUST)。
+Commit は、`.well-known/concrnt` において `net.concrnt.core.commit` として広告される HTTP POST エンドポイントです。クライアントは `owner` で示されるエンティティを管理するサーバに対し、署名済み Document を提出します。サーバは署名と権限を検証し、受理時に CDID やリソース URL を応答します。
+
+## 4. エンドポイント広告
+
+サーバは `.well-known/concrnt` に次のような項目を含めます。
 
 ```json
 {
@@ -31,38 +26,42 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
     "net.concrnt.core.entity": "/entity/${ccid}",
-    "net.concrnt.core.resource": "/resource/${uri}"
+    "net.concrnt.core.resource": "/resource/${uri}",
     "net.concrnt.core.commit": "/commit"
   }
 }
 ```
 
-### 3.1 リクエスト形式
+`version` と `csid` は CIP-0 の定義に従います。テンプレートに未知のプレースホルダを含めてはなりません（SHOULD NOT）。
 
-クライアントは、Commitエンドポイントに対してCIP-1で定義されたConcrnt Signed DocumentをHTTP POSTリクエストのボディとして送信します。
+## 5. リクエスト
 
+クライアントは `Content-Type: application/concrnt.signed-document+json` を指定し、CIP-1 で定義された Concrnt Signed Document を POST します。`owner` フィールドに記載されたエンティティを管理するサーバに送信しなければなりません（MUST）。署名者が所有者と異なる場合の権限付与は本仕様の範囲外です。
 
-クライアントは、ドキュメントに含まれる`owner`フィールドで指定されるEntityを管理するConcrntサーバーに対してリクエストを送信しなければなりません (MUST)。
-送信されたdocument中のownerが管理外のEntityであった場合、CIP-2はこの挙動を定義しません。
+## 6. レスポンス
 
-### 3.2 レスポンス形式
-サーバーは、リクエストが成功した場合、HTTP 201 Created ステータスコードを返し、レスポンスボディに以下のJSONオブジェクトを含めます。
+受理に成功した場合、サーバは HTTP 201 Created を返し、以下の JSON を含めます。
 
 ```json
 {
-  "cdid": "<生成されたCDID>",
-  "uri": "<CCURI>"
-  "url": "<リソースのURL>"
+  "cdid": "<generated CDID>",
+  "uri": "cc://<owner>/<key or cdid>",
+  "url": "https://example.com/resource/..."
 }
 ```
 
-## 4 要素の削除
-Concrnt Documentの削除は、`"https://schema.concrnt.net/delete.json"` スキーマを使用して行うことができる。
-削除リクエストは、Commitエンドポイントに対してCIP-1で定義されたConcrnt Signed DocumentをHTTP POSTリクエストのボディとして送信します。
-削除Documentの`value`フィールドは、削除対象のDocumentをCCURIで指定します。
+署名が無効である場合や `owner` が管理外である場合は 403 Forbidden、入力が不正な場合は 400 Bad Request を返します。サーバ内部の障害は 5xx で報告します。重複する再送に対しては同一 CDID を返すなど、冪等性を保つことが望まれます（SHOULD）。
 
-## 5. セキュリティと認証
-サーバーは、Commitエンドポイントへのリクエストが適切に署名されていることを検証し、署名者がリソースの変更を行う権限を持っていることを確認しなければなりません (MUST)。
-不正な署名や権限のないリクエストに対しては、HTTP 400 Bad Request または HTTP 403 Forbidden ステータスコードを返します。
+## 7. 削除要求
 
+削除は `"https://schema.concrnt.net/delete.json"` を `schema` に持つ Document を用いて行います。`value` に削除対象の CCURI を記載し、通常の Commit と同様に送信します。サーバは署名と権限を確認し、許可されない場合は 403 を返します。
 
+## 8. セキュリティに関する考慮事項
+
+署名検証は必須であり、無署名または無効な署名のリクエストを処理してはなりません（MUST NOT）。リプレイ防止のため、同一 Document の再送を検出し、冪等に処理することが推奨されます。過剰な書き込みを防ぐためのレート制限や監査ログの実装が望まれます。クロスサーバ転送を行う場合は、転送先を信頼できる範囲に限定し、TLS により保護してください。
+
+## 9. 参考文献 (References)
+
+[RFC2119] Bradner, S., “Key words for use in RFCs to Indicate Requirement Levels”, March 1997.  
+[RFC8174] Leiba, B., “Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words”, May 2017.  
+[RFC7231] Fielding, R., et al., “Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content”, June 2014.
