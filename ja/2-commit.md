@@ -52,7 +52,12 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
 }
 ```
 
-## 4. セキュリティと認証
+## 4 要素の削除
+Concrnt Documentの削除は、`"https://schema.concrnt.net/delete.json"` スキーマを使用して行うことができる。
+削除リクエストは、Commitエンドポイントに対してCIP-1で定義されたConcrnt Signed DocumentをHTTP POSTリクエストのボディとして送信します。
+削除Documentの`value`フィールドは、削除対象のDocumentをCCURIで指定します。
+
+## 5. セキュリティと認証
 サーバーは、Commitエンドポイントへのリクエストが適切に署名されていることを検証し、署名者がリソースの変更を行う権限を持っていることを確認しなければなりません (MUST)。
 不正な署名や権限のないリクエストに対しては、HTTP 400 Bad Request または HTTP 403 Forbidden ステータスコードを返します。
 
