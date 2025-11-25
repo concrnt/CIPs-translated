@@ -25,7 +25,7 @@ CIP-1で定義されたConcrnt Documentを拡張し、他のConcrnt Documentへ�
 
 ```json
 {
-  "key": "profile",                   // CIP-1
+  "key": undefined,                   // CIP-1
   "contentType": "application/json",  // CIP-1
   "schema": "https://...",            // CIP-1
   "value": { ... },                   // CIP-1
@@ -33,17 +33,23 @@ CIP-1で定義されたConcrnt Documentを拡張し、他のConcrnt Documentへ�
   "author": "con1...",                // CIP-1
   "owner": "con1...",                 // CIP-1
 
+  "associationKey": "example-association", // 任意の識別子
   "associate": "cc://<owner>/<document-key>", // CIP-6
 
   "createdAt": "2025-11-23T12:34:56Z" // CIP-1
 }
 ```
 
+associateフィールドの存在をもって、そのDocumentがCIP-6で定義されるAssociation Documentであることを識別する。
+associateフィールドには、関連付け先のDocumentを一意に識別するURIを指定する。
+Association Documentは、keyに値が入っていてはならない (MUST NOT)。つまり、Association DocumentはCDIDでのみ参照可能なオブジェクトである。
+associationKeyフィールドは、同一のassociate先に対して複数のAssociation Documentを作成する場合に、それらを区別するための任意の識別子である。
+associationKeyは512バイト以内のバイト列でなければならない (MUST)。
+associate・associationKey・authorの組み合わせは一意でなければならない (MUST)。
 associateを作成する場合、そのownerは常にassociate先のDocumentのownerと同一でなければならない (MUST)。
 クライアントは、associateのownerを管理するConcrntサーバーに対して、CIP-2で定義されるcommitエンドポイントへ送信しなければならない。
 
-
-## 4. Associationの取得
+## 4. Association の取得
 
 CIP-0で定義されるリソースのレスポンス形式を拡張し、apis.associationsフィールドを追加する。
 
