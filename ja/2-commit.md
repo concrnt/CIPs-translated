@@ -31,7 +31,7 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
     "net.concrnt.core.entity": "/entity/${ccid}",
-    "net.concrnt.core.resource": "/resource/${uri}"
+    "net.concrnt.core.resource": "/resource/${uri}",
     "net.concrnt.core.commit": "/commit"
   }
 }
@@ -51,7 +51,7 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
 ```json
 {
   "cdid": "<生成されたCDID>",
-  "uri": "<CCURI>"
+  "uri": "<CCURI>",
   "url": "<リソースのURL>"
 }
 ```
@@ -64,5 +64,4 @@ Concrnt Documentの削除は、`"https://schema.concrnt.net/delete.json"` スキ
 ## 5. セキュリティと認証
 サーバーは、Commitエンドポイントへのリクエストが適切に署名されていることを検証し、署名者がリソースの変更を行う権限を持っていることを確認しなければなりません (MUST)。
 不正な署名や権限のないリクエストに対しては、HTTP 400 Bad Request または HTTP 403 Forbidden ステータスコードを返します。
-
 

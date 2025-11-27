@@ -30,7 +30,7 @@ Concrnt サーバーは、HTTP GET リクエストを受け付けるエンドポ
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
     "net.concrnt.core.entity": "/entity/${ccid}",
-    "net.concrnt.core.resource": "/resource/${uri}"
+    "net.concrnt.core.resource": "/resource/${uri}",
     "net.concrnt.core.realtime": "/realtime"
   }
 }
@@ -82,5 +82,4 @@ source: 変更が発生したリソースのCCURI。
 resource: 変更されたリソースのCCURI。
 signed_document: CIP-1で定義されたConcrnt Signed Document。
 但し、documentが保護されているなどの場合において、このフィールドを省略してもよい (MAY)。
-
 

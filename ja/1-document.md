@@ -82,12 +82,13 @@ Document に付与されるオプションの「論理キー名」。
 Document のメディアタイプを表す文字列。
 * `contentType` が省略された場合、デフォルトで `"application/json"` と見なしてよい (SHOULD)。
 
-### 5.3 `schema` (string, optional)
+### 5.3 `schema` (string, required)
 
 `value` の構造を定義するスキーマの識別子。
 
 * URL（`https://schema.concrnt.net/...` など）として表現される。
 * URLは解決可能なエンドポイントであり、JSON Schema形式で型が定義されていなければならない (MUST)。
+* `schema` は省略してはならない (MUST)。
 * アプリケーションは `schema` に基づいて `value` の検証・パースを行ってもよい (MAY)。
 
 ### 5.4 `value` (any JSON, required)
@@ -153,7 +154,7 @@ MIMEタイプは `application/concrnt.signed-document+json` である。
   "document": "<JSON string above>",
   "proof": {
     "type": "concrnt-ecrecover-direct",
-    "signature": "<hex-encoded-signature>",
+    "signature": "<hex-encoded-signature>"
   }
 }
 ```
@@ -178,3 +179,4 @@ CCID 所有者の秘密鍵で直接署名する方式。
 検証方法:
 * ECRECOVER による公開鍵復元 → CCID の公開鍵と一致するか確認
 
+署名や CDID 生成に用いる JSON は、署名者が生成した文字列をそのまま使い、追加の正規化処理は行わない。

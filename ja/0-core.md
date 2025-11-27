@@ -154,7 +154,7 @@ signatureフィードには、署名の (v, r, s) を連結したものを16進�
 
 サーバは自身のローカルユーザーだけでなく、他の手段（フェデレーション、キャッシュなど）で取得した Affiliation Document を保存し、提供してもよい (MAY)。
 
-サーバは同一エンティティ (同一 CCID) に対して複数の Affiliation Document を受け取った場合、`signedAt` がより新しいものを優先して保存しなければなりません (MUST)。
+サーバは同一エンティティ (同一 CCID) に対して複数の Affiliation Document を受け取った場合、`createdAt` がより新しいものを優先して保存しなければなりません (MUST)。
 
 
 ## 9 サーバ
@@ -349,4 +349,3 @@ Concrnt 自体は単に名前解決の枠組みを提供するのみであり、
 * RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
 * RFC 8174 – Clarifications to RFC 2119
 * BIP32, BIP44 – Hierarchical Deterministic Wallets
-

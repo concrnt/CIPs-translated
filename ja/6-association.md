@@ -58,7 +58,7 @@ CIP-0で定義されるリソースのレスポンス形式を拡張し、apis.a
     ... CIP-0
     "apis": {
         "associations": "/api/v1/document/<id>/associations",
-        "associationCounts": "/api/v1/document/<id>/association_counts"
+        "associationCounts": "/api/v1/document/<id>/association_counts",
         "associationsByAuthor": "/api/v1/document/<id>/associations_by_author"
     }
 }
@@ -77,5 +77,4 @@ apis.associationCountsにアクセスすることで、対象Documentに関連�
 
 queryパラメータとして以下をサポートする。
 - schema: 取得するAssociation Documentのschemaを指定する。省略時は全てのschemaを対象とする。
-
 

@@ -35,7 +35,7 @@ subkeyは、以下のconcrnt documentを作成し広告しなければならな�
   "schema": "https://schema.concrnt.net/subkey-enact.json",
   "key": "cck<bech32-encoded-subkey-address>",
   "value": {
-    "ckid":"cck<bech32-encoded-subkey-address>",
+    "ckid": "cck<bech32-encoded-subkey-address>"
   },
   "createdAt": "2025-11-23T12:34:56Z"
 }
@@ -53,8 +53,8 @@ subkeyは、以下のconcrnt documentを作成し広告しなければならな�
   "schema": "https://schema.concrnt.net/subkey-revoke.json",
   "key": "cck<bech32-encoded-subkey-address>",
   "value": {
-    "ckid":"cck<bech32-encoded-subkey-address>",
-    "enact": 旧subkeyを有効化するために使用したConcrnt Document
+    "ckid": "cck<bech32-encoded-subkey-address>",
+    "enact": "<Concrnt Document used to enact the subkey>"
   },
   "createdAt": "2025-11-23T12:34:56Z"
 }
@@ -71,13 +71,12 @@ CIP-1で定義されたConcrnt Signed Documentにおいて、新しい署名タ�
     "type": "concrnt-ecrecover-subkey",
     "subkey": "cc://<CCID>/cck<bech32-encoded-subkey-address>",
     "signature": "<hex-encoded-signature>",
-    "signedAt": "2025-11-23T12:34:56Z"
+    "createdAt": "2025-11-23T12:34:56Z"
   }
 }
 ```
 
 検証時は、subkeyのConcrnt Documentを署名付きで取得し、正しく有効化されていることを確認しなければなりません(MUST)。
 Documentにおけるschemaフィールドが"https://schema.concrnt.net/subkey-enact.json"であることを確認しなければなりません(MUST)。
-schemaフィールドが"https://schema.concrnt.net/subkey-revoke.json"である場合、signedAtフィールドがrevoke DocumentのcreatedAtフィールドよりも前であり、enactフィールドに含まれるDocumentのcreatedAtフィールドよりも後であることを確認しなければなりません(MUST)。
+schemaフィールドが"https://schema.concrnt.net/subkey-revoke.json"である場合、proof内のcreatedAtフィールドがrevoke DocumentのcreatedAtフィールドよりも前であり、enactフィールドに含まれるDocumentのcreatedAtフィールドよりも後であることを確認しなければなりません(MUST)。
 また、documentのauthorフィールドがsubkeyのauthorと一致することを確認しなければなりません(MUST)。
-
