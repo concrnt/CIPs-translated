@@ -1,7 +1,8 @@
-# CIP-4 Chunked Timeline
+# CIP-4 Chunkline
 
 ## 0. Abstract
-この仕様では、フィードをチャンクに分割し、効率的に配信・取得するための **Chunked Timeline** フォーマットを定義する。
+この仕様では、フィードをチャンクに分割し、効率的に配信・取得するための Chunkline フォーマットを定義する。
+Chunklineは "Chunked Timeline" の略であり、大規模なタイムラインデータの配信に適した構造を提供する。
 
 ## 1. Status of This Memo
 
@@ -22,17 +23,17 @@ BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
 
 ## 3. Introduction
 RSSやAtomのような従来のフィードフォーマットは、全体を一つのドキュメントとして扱うため、大規模なタイムラインの配信や部分的な取得に非効率的である。
-Chunked Timeline フォーマットは、タイムラインを複数のチャンクに分割し、かつ間接参照を用いることで、「ある時期からの最新の投稿のみを取得する」などの効率的なアクセスを可能にする。
+Chunkline フォーマットは、タイムラインを複数のチャンクに分割し、かつ間接参照を用いることで、「ある時期からの最新の投稿のみを取得する」などの効率的なアクセスを可能にする。
 
 また、これらは動的に生成される他、静的にホスティングされることも可能であり、CDNを活用した配信も容易になる。
 
-## 4. Chunked Timeline Document
+## 4. Chunkline Document
 
-この仕様では、Chunked Timeline Documentとそれが指し示すIterator Node、そしてBody Nodeについて説明しています。
+この仕様では、Chunkline Documentとそれが指し示すIterator Node、そしてBody Nodeについて説明しています。
 
-Chunked Timeline Documentは、Chunked Timelineの表現であり、フィードに関するメタデータとそれに関連付けられているIterator Node及びBody Nodeへの解決方法を提供します。
+Chunkline Documentは、Chunklineの表現であり、フィードに関するメタデータとそれに関連付けられているIterator Node及びBody Nodeへの解決方法を提供します。
 
-Chunked Timeline Documentは、以下のようなJSON構造で表現されます。また、MIMEタイプは `application/chunked-timeline+json`です。
+Chunkline Documentは、以下のようなJSON構造で表現されます。また、MIMEタイプは `application/chunkline+json`です。
 
 ```json
 {
@@ -69,7 +70,7 @@ iteratorノードは、該当チャンクのうち、最新のデータを含む
 5785524
 ```
 
-iteratorノードは、chunked timeline documentのfirstChunkから、lastChunkまでの範囲ですべてアクセス可能でなければなりません (MUST)。
+iteratorノードは、Chunkline documentのfirstChunkから、lastChunkまでの範囲ですべてアクセス可能でなければなりません (MUST)。
 
 ### 4.2. Body Node
 bodyノードは、該当チャンクに含まれる実際の投稿データおよび投稿への参照を提供します。
