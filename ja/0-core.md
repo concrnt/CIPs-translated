@@ -175,10 +175,12 @@ GET https://<domain>/.well-known/concrnt
 ```json
 {
   "version": "2.0",
+  "domain": "example.com"
   "csid": "ccs1<bech32-encoded-address>",
+  "layer": "mainnet"
   "endpoints": {
-    "net.concrnt.core.entity": "/entity/${ccid}",
-    "net.concrnt.core.resource": "/resource/${uri}"
+    "net.concrnt.core.entity": "/entity/{ccid}",
+    "net.concrnt.core.resource": "/resource/{uri}"
   }
 }
 ```
@@ -186,8 +188,15 @@ GET https://<domain>/.well-known/concrnt
 * `version`
   Concrnt プロトコルのメジャーバージョン。現段階では `"2.0"` を使用する。
 
+* `domain`
+  サーバの FQDN。
+
 * `csid`
   サーバの CSID。
+
+* `layer`
+  そのサーバーが所属するネットワーク名。慣用的に `"mainnet"`、`"testnet"` などが使用されるが、これに限られない。
+  あるサーバーはこの識別子を見て、同一である場合のみそのサーバーとのリソースのやり取りを行わなければならない (MUST)。
 
 * `endpoints`
   サーバが提供するエンドポイント名と、その URL テンプレートのマッピング。
@@ -206,19 +215,19 @@ GET https://<domain>/.well-known/concrnt
 
 `endpoints` の値は、次のいずれかの形式を取ることができます (MAY)。
 
-* URIを利用したパス: `"/api/v1/resource?uri=${uri}"`
-* URIの要素を利用したパス: `"/cc/${owner}/${key}"`
-* 絶対 URL: `"https://cdn.example.com/${owner}/${key}"`
+* URIを利用したパス: `"/api/v1/resource?uri={uri}"`
+* URIの要素を利用したパス: `"/cc/{owner}/{key}"`
+* 絶対 URL: `"https://cdn.example.com/{owner}/{key}"`
 
 テンプレート内では、以下のプレースホルダを使用できます。
 
-* `${uri}`
+* `{uri}`
   完全な CCURI (`cc://<CCID>/<key>`) を URL エンコードした文字列。
 
-* `${owner}`
+* `{owner}`
   CCURI の CCID 部分 (`con1...`)。通常は URL エンコード不要。
 
-* `${key}`
+* `{key}`
   CCURI の `<key>` 部分（先頭の `/` を除いたパス）。
   必要に応じてクライアントが URL エンコードして埋め込みます。
 
@@ -237,12 +246,12 @@ GET https://<domain>/.well-known/concrnt
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.entity": "/entity/${ccid}"
+    "net.concrnt.core.entity": "/entity/{ccid}"
   }
 }
 ```
 
-クライアントは、エンティティ CCID (`con1...`) を `${ccid}` にそのまま埋め込みます。
+クライアントは、エンティティ CCID (`con1...`) を `{ccid}` にそのまま埋め込みます。
 
 例:
 
@@ -284,7 +293,7 @@ GET https://example.com/entity/con1abc123...
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.resource": "/api/v1/resource/${uri}"
+    "net.concrnt.core.resource": "/api/v1/resource/{uri}"
   }
 }
 ```
@@ -305,7 +314,7 @@ GET https://example.com/entity/con1abc123...
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.resource": "/${owner}/${key}"
+    "net.concrnt.core.resource": "/{owner}/{key}"
   }
 }
 ```
@@ -316,7 +325,7 @@ GET https://example.com/entity/con1abc123...
 GET https://static.example.com/con1alice/posts/2025-11-23/hello
 ```
 
-`<key>` が空文字列の場合、`${key}` は空文字列に置き換えられます。
+`<key>` が空文字列の場合、`{key}` は空文字列に置き換えられます。
 末尾のスラッシュをどう扱うかはサーバ実装に依存します（例: `/con1alice/` とするか `/con1alice` とするか）。
 
 #### 9.4.2 レスポンスの例
