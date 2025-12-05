@@ -150,7 +150,7 @@ signatureフィードには、署名の (v, r, s) を連結したものを16進�
 ### 8.3 Affiliation の公開
 
 サーバは、所属しているエンティティの Affiliation 情報を保持し、
-`net.concrnt.core.entity` エンドポイントを通じて提供しなければなりません (MUST)。
+`net.concrnt.core.resource` エンドポイントを通じて提供しなければなりません (MUST)。
 
 サーバは自身のローカルユーザーだけでなく、他の手段（フェデレーション、キャッシュなど）で取得した Affiliation Document を保存し、提供してもよい (MAY)。
 
@@ -207,7 +207,10 @@ GET https://<domain>/.well-known/concrnt
 
 ### 9.3 net.concrnt.core.resource エンドポイント
 
-`net.concrnt.core.entity` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
+`net.concrnt.core.resource` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
+また、追加のパラメーターとして`?hint=`を受け取ります。
+
+hintを指定することで、CDIDやCCIDなどを解決する際に、現在そのリソースをホストしている可能性のあるサーバーを示唆できます。
 
 ### 9.3.1 テンプレート構文
 
@@ -273,7 +276,6 @@ GET https://static.example.com/con1alice/posts/2025-11-23/hello
 
 #### 9.3.3 レスポンスの例
 
-
 #### 9.3.3.1 エンティティ情報の返却
 サーバーは、レスポンスに最低限次の要素が含まれる JSON を返却しなければなりません (MUST)。
 
@@ -298,7 +300,7 @@ GET https://static.example.com/con1alice/posts/2025-11-23/hello
 
 #### 9.3.3.2 サーバー情報の返却
 
-サーバーは、リクエストされたCSIDが既知のもの出会った場合、次のようにキャッシュしているサーバー情報を返却してもよい (MAY)。
+サーバーは、リクエストされたCSIDが既知のもの出会った場合、次のようにキャッシュしているサーバー情報を返却するべきです (SHOULD)。
 
 ```json
 {
@@ -307,7 +309,6 @@ GET https://static.example.com/con1alice/posts/2025-11-23/hello
   "layer": "mainnet"
 }
 ```
-
 
 #### 9.3.3.3 リソースの返却
 
