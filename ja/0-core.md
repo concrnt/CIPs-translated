@@ -179,7 +179,6 @@ GET https://<domain>/.well-known/concrnt
   "csid": "ccs1<bech32-encoded-address>",
   "layer": "mainnet"
   "endpoints": {
-    "net.concrnt.core.entity": "/entity/{ccid}",
     "net.concrnt.core.resource": "/resource/{uri}"
   }
 }
@@ -201,17 +200,16 @@ GET https://<domain>/.well-known/concrnt
 * `endpoints`
   サーバが提供するエンドポイント名と、その URL テンプレートのマッピング。
 
-サーバーは、少なくとも次の2つのエンドポイントを実装しなければなりません (MUST)。
-
-* `net.concrnt.core.entity`
-  エンティティ情報（Affiliation 等）を取得するためのエンドポイント。
-
-* `net.concrnt.core.resource`
-  CCURI に対応するリソースを取得するためのエンドポイント。
+サーバーは、少なくとも`net.concrnt.core.resource`エンドポイントを実装しなければなりません (MUST)。
 
 他のエンドポイントは、別の CIP によって定義されます。
 
-### 9.2 テンプレート構文
+
+### 9.3 net.concrnt.core.resource エンドポイント
+
+`net.concrnt.core.entity` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
+
+### 9.3.1 テンプレート構文
 
 `endpoints` の値は、次のいずれかの形式を取ることができます (MAY)。
 
@@ -234,59 +232,7 @@ GET https://<domain>/.well-known/concrnt
 サーバは、未知のプレースホルダを使用すべきではありません (SHOULD NOT)。
 クライアントは、仕様で定義されていないプレースホルダを見つけた場合、そのエンドポイントを利用しないことができます。
 
-
-### 9.3 net.concrnt.core.entity エンドポイント
-
-`net.concrnt.core.entity` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
-
-#### 9.3.1 テンプレート例
-
-`.well-known/concrnt` における定義例:
-
-```json
-{
-  "endpoints": {
-    "net.concrnt.core.entity": "/entity/{ccid}"
-  }
-}
-```
-
-クライアントは、エンティティ CCID (`con1...`) を `{ccid}` にそのまま埋め込みます。
-
-例:
-
-```text
-GET https://example.com/entity/con1abc123...
-```
-
-#### 9.3.2 レスポンスの例
-
-サーバーは、レスポンスに最低限次の要素が含まれる JSON を返却しなければなりません (MUST)。
-
-```json
-{
-  "ccid": "con1<bech32-encoded-address>",
-  "affiliationDocument": "{...}",
-  "affiliationSignature": "..."
-}
-```
-
-* `ccid`
-  対象エンティティの CCID。
-
-* `affiliationDocument`
-  Affiliation Document の JSON 文字列。
-
-* `affiliationSignature`
-  Affiliation Document に対する署名。
-
-サーバは追加のメタ情報（例: 既知のプロフィール位置や上位プロトコルへのヒント）を含めてもよい (MAY)。
-
-
-### 9.4. net.concrnt.core.resource エンドポイント
-
-`net.concrnt.core.resource` エンドポイントは、CCURI に対応するリソースを取得するために使用されます。
-#### 9.4.1 net.concrnt.core.resource の解決例
+#### 9.3.2 テンプレートとリクエストの例
 
 **例1: 動的 API サーバ**
 
@@ -325,10 +271,46 @@ GET https://example.com/entity/con1abc123...
 GET https://static.example.com/con1alice/posts/2025-11-23/hello
 ```
 
-`<key>` が空文字列の場合、`{key}` は空文字列に置き換えられます。
-末尾のスラッシュをどう扱うかはサーバ実装に依存します（例: `/con1alice/` とするか `/con1alice` とするか）。
+#### 9.3.3 レスポンスの例
 
-#### 9.4.2 レスポンスの例
+
+#### 9.3.3.1 エンティティ情報の返却
+サーバーは、レスポンスに最低限次の要素が含まれる JSON を返却しなければなりません (MUST)。
+
+```json
+{
+  "ccid": "con1<bech32-encoded-address>",
+  "affiliationDocument": "{...}",
+  "affiliationSignature": "..."
+}
+```
+
+* `ccid`
+  対象エンティティの CCID。
+
+* `affiliationDocument`
+  Affiliation Document の JSON 文字列。
+
+* `affiliationSignature`
+  Affiliation Document に対する署名。
+
+サーバは追加のメタ情報（例: 既知のプロフィール位置や上位プロトコルへのヒント）を含めてもよい (MAY)。
+
+#### 9.3.3.2 サーバー情報の返却
+
+サーバーは、リクエストされたCSIDが既知のもの出会った場合、次のようにキャッシュしているサーバー情報を返却してもよい (MAY)。
+
+```json
+{
+  "csid": "ccs1<bech32-encoded-address>",
+  "domain": "example.com",
+  "layer": "mainnet"
+}
+```
+
+
+#### 9.3.3.3 リソースの返却
+
 サーバーは、Acceptヘッダが`application/json`であった場合、次のようなJSONレスポンスをHTTPステータス200で返却しなければなりません (MUST)。
 
 ```json
