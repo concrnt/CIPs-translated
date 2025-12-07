@@ -319,7 +319,6 @@ GET https://static.example.com/con1alice/posts/2025-11-23/hello
   "contentType": "application/json",
   "schema": "https://schema.concrnt.net/resource.json",
   "value": { ... },
-  "apis": {}
 }
 ```
 

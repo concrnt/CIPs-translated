@@ -51,18 +51,19 @@ associateを作成する場合、そのownerは常にassociate先のDocumentのo
 
 ## 4. Association の取得
 
-CIP-0で定義されるリソースのレスポンス形式を拡張し、apis.associationsフィールドを追加する。
+CIP-0で定義されるサービスディスカバリにおいて、以下の複数種類のエンドポイントを追加して広告する。
+以下はテンプレートを使い、エンドポイントを広告している例である。
 
-```json
 {
-    ... CIP-0
-    "apis": {
-        "associations": "/api/v1/document/<id>/associations",
-        "associationCounts": "/api/v1/document/<id>/association_counts",
-        "associationsByAuthor": "/api/v1/document/<id>/associations_by_author"
-    }
+  "version": "2.0",
+  "csid": "ccs1<bech32-encoded-address>",
+  "endpoints": {
+    "net.concrnt.core.resource": "/resource/{uri}",
+    "net.concrnt.core.associations": "/associations",
+    "net.concrnt.core.association-counts": "/association-counts",
+  }
 }
-```
+
 
 ### 4.1 associations
 apis.associationsにアクセスすることで、対象Documentに関連付けられたAssociation Documentの一覧を取得できる。

@@ -30,8 +30,7 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
   "version": "2.0",
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
-    "net.concrnt.core.entity": "/entity/${ccid}",
-    "net.concrnt.core.resource": "/resource/${uri}",
+    "net.concrnt.core.resource": "/resource/{uri}",
     "net.concrnt.core.commit": "/commit"
   }
 }
