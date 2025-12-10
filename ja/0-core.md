@@ -88,13 +88,27 @@ CCURI (Concrnt Resource Identifier) は、Concrnt エコシステム内のリソ
 CCURI の形式は次の通りです。
 
 ```text
-cc://<CCID>
-cc://<CCID>/<key>
+cc://<CCID or CSID>
+cc://<FQDN>
+cc://<CCID or CSID>/<key>
+cc://<FQDN>/<key>
+
+cc://<CCID or CSID>@<resolver FQDN>
+cc://<CCID or CSID>@<resolver FQDN>/<key>
 ```
 
 CCURIは、CCID部とkey部から構成されます。CCID部はリソースの所有者を示し、key部はその所有者の名前空間内でのリソースの位置を示します。
 key部が省略された場合、リソースではなくエンティティそのものを指し示します。
 keyは最大1024バイトのバイト列である必要があります。また、keyは最低1文字以上でなければなりません (MUST)。
+
+### 7.1 正規表記
+
+CCURIでは、次の形式を正規表記として定義します。
+この表記は2種類の表記が現時点において同一のものを指しているかどうかを判別するためのもので、通常はresolverを固定しない形式を利用すべきです。
+
+```text
+cc://<CCID or CSID>@<resolver FQDN>/<key>
+```
 
 ## 8. Affiliation
 ### 8.1 Affiliation Document
