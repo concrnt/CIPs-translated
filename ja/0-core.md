@@ -193,7 +193,10 @@ GET https://<domain>/.well-known/concrnt
   "csid": "ccs1<bech32-encoded-address>",
   "layer": "mainnet"
   "endpoints": {
-    "net.concrnt.core.resource": "/resource/{uri}"
+    "net.concrnt.core.resource": {
+      "template": "/resource/{uri}",
+      "method": "GET"
+    }
   }
 }
 ```
@@ -214,10 +217,17 @@ GET https://<domain>/.well-known/concrnt
 * `endpoints`
   サーバが提供するエンドポイント名と、その URL テンプレートのマッピング。
 
+endpointsの各エントリは次の要素から構成されます
+* `template`
+  エンドポイントの URL テンプレート
+* `method`
+  HTTP メソッド (例: `GET`, `POST`)
+* `query` (OPTIONAL)
+  利用可能なクエリパラメーターのリスト
+
 サーバーは、少なくとも`net.concrnt.core.resource`エンドポイントを実装しなければなりません (MUST)。
 
 他のエンドポイントは、別の CIP によって定義されます。
-
 
 ### 9.3 net.concrnt.core.resource エンドポイント
 
@@ -230,7 +240,6 @@ hintを指定することで、CDIDやCCIDなどを解決する際に、現在�
 
 `endpoints` の値は、次のいずれかの形式を取ることができます (MAY)。
 
-* URIを利用したパス: `"/api/v1/resource?uri={uri}"`
 * URIの要素を利用したパス: `"/cc/{owner}/{key}"`
 * 絶対 URL: `"https://cdn.example.com/{owner}/{key}"`
 
@@ -256,21 +265,27 @@ hintを指定することで、CDIDやCCIDなどを解決する際に、現在�
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.resource": "/api/v1/resource/{uri}"
+    "net.concrnt.core.resource": {
+      "template": "/api/v1/resource",
+      "method": "GET",
+      "query": ["uri"]
+    }
   }
 }
 ```
 
+この場合、クライアントは次のようにリクエストを構築します。
+
 `cc://con1alice/keys/profile` を解決する場合:
 
 1. クライアントは `cc://con1alice/keys/profile` を URL エンコードする。
-   → `cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile`
+`cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile`
 
 2. テンプレートに埋め込む。
 
-   ```text
-   GET https://example.com/api/v1/resource/cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile
-   ```
+```text
+GET https://example.com/api/v1/resource?uri=cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile
+```
 
 **例2: 静的ホスティングレイアウト**
 

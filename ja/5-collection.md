@@ -55,7 +55,10 @@ Content-Typeに `application/chunked-timeline+json` を指定する。
 
 該当リソースにアクセスした場合、Concrntサーバーはdocument内のvalueを全てmetadataフィールドにコピーし、Chunked Timeline Documentを生成して返却します。
 
-## 5. Collection/Timelineへの要素の追加
+## 5. Collection/Timelineへの要素の追加 (WIP)
+
+collectionの要素である予約document schema `https://schema.concrnt.net/item.json` を定義する。
+
 
 CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの要素の追加を定義する。
 
@@ -83,4 +86,15 @@ CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの�
 
 memberOfフィールドで指定されるCCURIは、そのサーバーが管理しているものでなくてもよい。その場合、サーバーはこのドキュメントを該当するサーバーの、CIP-2で定義されたcommitエンドポイントに対して代理で送信しなければならない(MUST)。
 
+このmemberOfフィールドへの存在をもって、item documentのproofとして利用することができる。
+
+```json
+{
+  "document": "<JSON string above>",
+  "proof": {
+    "type": "collection-membership",
+    "uri": "cc://<CCID>/item-key"
+  }
+}
+```
 
