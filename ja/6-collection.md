@@ -1,4 +1,4 @@
-# CIP-5 Collection
+# CIP-6 Collection
 
 ## 0. Abstract
 この仕様では、Concrnt上で複数のDocumentを論理的にまとめて扱うための **Collection** フォーマットを定義する。
@@ -70,9 +70,8 @@ CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの�
   "value": { ... },                   // CIP-1
 
   "author": "con1...",                // CIP-1
-  "owner": "con1...",                 // CIP-1
 
-  "memberOf": [                       //CIP-5
+  "memberOf": [                       //CIP-6
     "cc://<CCID>/<collection-key>",
     "cc://<CCID>/<timeline-key>"
   ],
@@ -82,17 +81,17 @@ CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの�
 ```
 
 新しくmemberOfフィールドを追加し、Documentが所属するCollection/TimelineのCCURIを配列で指定できるようにする。
-サーバーはmemberOfフィールドの内容に基づき、該当するCollection/TimelineにDocumentを追加しなければならない(MUST)。
+サーバーはmemberOfフィールドの内容に基づき、該当するCollection/Timelineを親とするReference Document(CIP-4)を自動的に生成しなければならない(MUST)。
 
 memberOfフィールドで指定されるCCURIは、そのサーバーが管理しているものでなくてもよい。その場合、サーバーはこのドキュメントを該当するサーバーの、CIP-2で定義されたcommitエンドポイントに対して代理で送信しなければならない(MUST)。
 
-このmemberOfフィールドへの存在をもって、item documentのproofとして利用することができる。
+このmemberOfフィールドへの存在をもって、Reference documentのproofとして利用することができる。
 
 ```json
 {
   "document": "<JSON string above>",
   "proof": {
-    "type": "collection-membership",
+    "type": "document-reference",
     "uri": "cc://<CCID>/item-key"
   }
 }

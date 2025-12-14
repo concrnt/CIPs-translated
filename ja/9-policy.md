@@ -1,4 +1,4 @@
-# CIP-8 Policy
+# CIP-9 Policy
 
 ## 0. Abstract
 本仕様は、Concrntのリソースに対するアクセス制御ポリシーを定義する手段を提供する。

@@ -1,4 +1,4 @@
-# CIP-4 Chunkline
+# CIP-5 Chunkline
 
 ## 0. Abstract
 この仕様では、フィードをチャンクに分割し、効率的に配信・取得するための Chunkline フォーマットを定義する。

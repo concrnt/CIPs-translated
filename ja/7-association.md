@@ -1,4 +1,4 @@
-# CIP-6 Association
+# CIP-7 Association
 
 ## 0. Abstract
 この仕様では、CIP-1で定義されるConcrnt Documentを拡張し、あるConcrnt Documentから他のConcrnt Documentへの関連付け（アソシエーション）を表現する方法を定義する。
