@@ -55,12 +55,18 @@ Content-Typeに `application/chunked-timeline+json` を指定する。
 
 該当リソースにアクセスした場合、Concrntサーバーはdocument内のvalueを全てmetadataフィールドにコピーし、Chunked Timeline Documentを生成して返却します。
 
-## 5. Collection/Timelineへの要素の追加 (WIP)
+## 5. Collection/Timelineへの要素の追加
 
-collectionの要素である予約document schema `https://schema.concrnt.net/item.json` を定義する。
+concrntでは、あるキーで定義した要素の下に要素を作成することで、Collection/Timelineの要素として扱うことができる。
 
+たとえば、キー`cc://con1alice/my-collection`でCollectionを作成した場合、`cc://con1alice/my-collection/item1`のように要素を追加することで、そのCollectionの要素として扱うことができる。
 
-CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの要素の追加を定義する。
+要素には直接ドキュメントを追加できるほか、Reference Document(CIP-4)を利用して1つの要素を複数のコレクションへ追加することもできる。
+
+## 5.1 MemberOfフィールドによる省略
+
+1つの要素を複数のコレクションを追加する場合、その数だけReference Documentを作成するのは冗長である。
+そこで、CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの要素の追加を指示するための `memberOf` フィールドを定義する。
 
 ```json
 {
@@ -80,7 +86,7 @@ CIP-1で定義されたConcrnt Documentを拡張し、Collection/Timelineへの�
 }
 ```
 
-新しくmemberOfフィールドを追加し、Documentが所属するCollection/TimelineのCCURIを配列で指定できるようにする。
+memberOfフィールドはCCURIの配列でなければならない(MUST)。
 サーバーはmemberOfフィールドの内容に基づき、該当するCollection/Timelineを親とするReference Document(CIP-4)を自動的に生成しなければならない(MUST)。
 
 memberOfフィールドで指定されるCCURIは、そのサーバーが管理しているものでなくてもよい。その場合、サーバーはこのドキュメントを該当するサーバーの、CIP-2で定義されたcommitエンドポイントに対して代理で送信しなければならない(MUST)。
@@ -96,4 +102,6 @@ memberOfフィールドで指定されるCCURIは、そのサーバーが管理�
   }
 }
 ```
+
+サーバーはタイプ`document-reference`のproofを検証する際、uriフィールドに指定されたときゅめんとを解決し、そのmemberOfフィールドにこのドキュメントが含まれていることを確認しなければならない(MUST)。
 
