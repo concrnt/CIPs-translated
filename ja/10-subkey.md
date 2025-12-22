@@ -1,4 +1,4 @@
-# CIP-3 Subkey
+# CIP-10 Subkey
 
 ## 0. Abstract
 本ドキュメントでは、CIP-1で定義されたConcrnt Signed Documentにおいて、署名者の秘密鍵を直接使用することなく、信頼された別の鍵（サブキー）を用いて署名を行う方法を定義する。
