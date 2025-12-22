@@ -108,8 +108,7 @@ Document が表現する実データ。
 
 Document の「論理的な所有者」を表す CCID。
 
-* `owner` が省略された場合、その Document の所有者は `author` と見なしてよい (SHOULD)。
-* `owner` が存在する場合も、それが実際の所有者であるかどうかの検証方法は CIP-3 以降に委ねられる。
+* `owner` が省略された場合、その Document の所有者は `author` と見なされる (MUST)。
 
 ### 5.7 `createdAt` (string, required)
 
