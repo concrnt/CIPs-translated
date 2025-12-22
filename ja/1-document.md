@@ -53,7 +53,6 @@ MIMEタイプは `application/concrnt.document+json` である。
 ```json
 {
   "key": "profile",                   // optional
-  "contentType": "application/json",  // optional
   "schema": "https://...",            // required
   "value": { ... },                   // required
 
