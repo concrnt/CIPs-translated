@@ -164,7 +164,7 @@ signatureフィードには、署名の (v, r, s) を連結したものを16進�
 ### 8.3 Affiliation の公開
 
 サーバは、所属しているエンティティの Affiliation 情報を保持し、
-`net.concrnt.core.resource` エンドポイントを通じて提供しなければなりません (MUST)。
+`net.concrnt.resource` エンドポイントを通じて提供しなければなりません (MUST)。
 
 サーバは自身のローカルユーザーだけでなく、他の手段（フェデレーション、キャッシュなど）で取得した Affiliation Document を保存し、提供してもよい (MAY)。
 
@@ -193,7 +193,7 @@ GET https://<domain>/.well-known/concrnt
   "csid": "ccs1<bech32-encoded-address>",
   "layer": "mainnet"
   "endpoints": {
-    "net.concrnt.core.resource": {
+    "net.concrnt.resource": {
       "template": "/resource/{uri}",
       "method": "GET"
     }
@@ -225,13 +225,13 @@ endpointsの各エントリは次の要素から構成されます
 * `query` (OPTIONAL)
   利用可能なクエリパラメーターのリスト
 
-サーバーは、少なくとも`net.concrnt.core.resource`エンドポイントを実装しなければなりません (MUST)。
+サーバーは、少なくとも`net.concrnt.resource`エンドポイントを実装しなければなりません (MUST)。
 
 他のエンドポイントは、別の CIP によって定義されます。
 
-### 9.3 net.concrnt.core.resource エンドポイント
+### 9.3 net.concrnt.resource エンドポイント
 
-`net.concrnt.core.resource` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
+`net.concrnt.resource` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
 また、追加のパラメーターとして`?hint=`を受け取ります。
 
 hintを指定することで、CDIDやCCIDなどを解決する際に、現在そのリソースをホストしている可能性のあるサーバーを示唆できます。
@@ -265,7 +265,7 @@ hintを指定することで、CDIDやCCIDなどを解決する際に、現在�
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.resource": {
+    "net.concrnt.resource": {
       "template": "/api/v1/resource",
       "method": "GET",
       "query": ["uri"]
@@ -292,7 +292,7 @@ GET https://example.com/api/v1/resource?uri=cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofil
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.resource": "/{owner}/{key}"
+    "net.concrnt.resource": "/{owner}/{key}"
   }
 }
 ```

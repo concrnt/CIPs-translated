@@ -23,15 +23,15 @@ BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
 
 ## 3. Commit エンドポイント
 Concrnt サーバーは、HTTP POST リクエストを受け付けるエンドポイントを提供する。
-これは、CIP-0で定義されるサービスディスカバリにおいて、"net.concrnt.core.commit" エンドポイント名で広告されなければなりません (MUST)。
+これは、CIP-0で定義されるサービスディスカバリにおいて、"net.concrnt.commit" エンドポイント名で広告されなければなりません (MUST)。
 
 ```json
 {
   "version": "2.0",
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
-    "net.concrnt.core.resource": "/resource/{uri}",
-    "net.concrnt.core.commit": "/commit"
+    "net.concrnt.resource": "/resource/{uri}",
+    "net.concrnt.commit": "/commit"
   }
 }
 ```

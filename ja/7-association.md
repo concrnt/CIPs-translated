@@ -58,9 +58,9 @@ CIP-0で定義されるサービスディスカバリにおいて、以下の複
   "version": "2.0",
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
-    "net.concrnt.core.resource": "/resource/{uri}",
-    "net.concrnt.core.associations": "/associations",
-    "net.concrnt.core.association-counts": "/association-counts",
+    "net.concrnt.resource": "/resource/{uri}",
+    "net.concrnt.associations": "/associations",
+    "net.concrnt.association-counts": "/association-counts",
   }
 }
 

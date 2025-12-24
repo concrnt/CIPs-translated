@@ -23,22 +23,22 @@ BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
 
 ## 3. Query エンドポイント
 Concrnt サーバーは、HTTP GET リクエストを受け付けるエンドポイントを提供する。
-これは、CIP-0で定義されるサービスディスカバリにおいて、"net.concrnt.core.query" エンドポイント名で広告されなければなりません (MUST)。
+これは、CIP-0で定義されるサービスディスカバリにおいて、"net.concrnt.query" エンドポイント名で広告されなければなりません (MUST)。
 
 ```json
 {
   "version": "2.0",
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
-    "net.concrnt.core.resource": "/resource/{uri}",
-    "net.concrnt.core.query": "/query"
+    "net.concrnt.resource": "/resource/{uri}",
+    "net.concrnt.query": "/query"
   }
 }
 ```
 
 ### 3.1 リクエスト形式
 
-"net.concrnt.core.query" エンドポイントは、以下のクエリパラメータを受け付ける。
+"net.concrnt.query" エンドポイントは、以下のクエリパラメータを受け付ける。
 - `prefix` 検索対象のキーの接頭辞を指定する文字列。 (必須)
 - `schema` スキーマを指定する文字列。 (任意)
 - `since` 指定されたタイムスタンプ以降に作成されたリソースのみを返すための ISO 8601 形式の日時文字列。 (任意)
