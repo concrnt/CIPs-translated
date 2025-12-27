@@ -33,8 +33,8 @@ CIP-1で定義されたConcrnt Documentを拡張し、他のConcrnt Documentへ�
   "author": "con1...",                // CIP-1
   "owner": "con1...",                 // CIP-1
 
-  "associationKey": "example-association", // 任意の識別子
   "associate": "cc://<owner>/<document-key>", // CIP-6
+  "associationVariant": "example-variant",    // CIP-6 (optional)
 
   "createdAt": "2025-11-23T12:34:56Z" // CIP-1
 }
@@ -43,9 +43,11 @@ CIP-1で定義されたConcrnt Documentを拡張し、他のConcrnt Documentへ�
 associateフィールドの存在をもって、そのDocumentがCIP-6で定義されるAssociation Documentであることを識別する。
 associateフィールドには、関連付け先のDocumentを一意に識別するURIを指定する。
 Association Documentは、keyに値が入っていてはならない (MUST NOT)。つまり、Association DocumentはCDIDでのみ参照可能なオブジェクトである。
-associationKeyフィールドは、同一のassociate先に対して複数のAssociation Documentを作成する場合に、それらを区別するための任意の識別子である。
-associationKeyは512バイト以内のバイト列でなければならない (MUST)。
-associate・associationKey・authorの組み合わせは一意でなければならない (MUST)。
+
+associationVariantフィールドは、Association Documentのバリエーションを表現するための任意の文字列である。
+associationVariantは512バイト以内のバイト列でなければならない (MUST)。
+associationは、associate, schema, associationVariantの組み合わせで一意に識別される。
+
 associateを作成する場合、そのownerは常にassociate先のDocumentのownerと同一でなければならない (MUST)。
 クライアントは、associateのownerを管理するConcrntサーバーに対して、CIP-2で定義されるcommitエンドポイントへ送信しなければならない。
 
@@ -78,4 +80,17 @@ apis.associationCountsにアクセスすることで、対象Documentに関連�
 
 queryパラメータとして以下をサポートする。
 - schema: 取得するAssociation Documentのschemaを指定する。省略時は全てのschemaを対象とする。
+
+## 5. Ack
+associationのうち、associateフィールドが指すURIがentityそのものであるURI(e.g.: `cc://<owner>`)であるものをAckと呼ぶ。
+Ackは、あるentityが他のentityを承認したことを示すAssociation Documentである。
+Ackも同様に、schema値を変化させることで様々な承認を表現することができる。
+
+
+## 5.1 Ackの配布
+ackは送信元entityと送信先entity両方で持つ
+
+## 5.2 Ackの取得
+
+`net.concrnt.acks`と`net.concrnt.ackers`エンドポイントを追加する。
 
