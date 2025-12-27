@@ -329,7 +329,7 @@ GET https://static.example.com/con1alice/posts/2025-11-23/hello
 
 #### 9.3.3.2 サーバー情報の返却
 
-サーバーは、リクエストされたCSIDが既知のもの出会った場合、次のようにキャッシュしているサーバー情報を返却するべきです (SHOULD)。
+サーバーは、リクエストされたCSIDが既知のものであった場合、次のようにキャッシュしているサーバー情報を返却するべきです (SHOULD)。
 
 ```json
 {
@@ -341,13 +341,15 @@ GET https://static.example.com/con1alice/posts/2025-11-23/hello
 
 #### 9.3.3.3 リソースの返却
 
-サーバーは、Acceptヘッダが`application/json`であった場合、次のようなJSONレスポンスをHTTPステータス200で返却しなければなりません (MUST)。
+サーバーは、signed-document形式で署名されたリソースを返却することができます。
 
 ```json
 {
-  "contentType": "application/json",
-  "schema": "https://schema.concrnt.net/resource.json",
-  "value": { ... },
+    "document": "{...}",
+    "proof": {
+        "type": "concrnt-ecrecover-direct",
+        "signature": "<hex-encoded-signature>"
+    }
 }
 ```
 
