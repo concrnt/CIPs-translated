@@ -69,7 +69,7 @@ CIP-1で定義されたConcrnt Signed Documentにおいて、新しい署名タ�
   "document": "<JSON string above>",
   "proof": {
     "type": "concrnt-ecrecover-subkey",
-    "subkey": "cc://<CCID>/cck<bech32-encoded-subkey-address>",
+    "subkey": "cckv://<CCID>/cck<bech32-encoded-subkey-address>",
     "signature": "<hex-encoded-signature>",
     "createdAt": "2025-11-23T12:34:56Z"
   }

@@ -3,7 +3,7 @@
 ## 0. Abstract
 
 Concrnt は、分散型 Social Networking Service (SNS) を構築するためのプロトコル群です。
-Concrnt Core では、最小プロトコルとして暗号学的なエンティティ識別子（CCID）、エンティティとサーバの所属関係（Affiliation）、および cc:// スキームによる Concrnt リソース URI（CCURI）の名前解決を定義します。
+Concrnt Core では、最小プロトコルとして暗号学的なエンティティ識別子（CCID）、エンティティとサーバの所属関係（Affiliation）、および ccfs://あるいはcckv:// スキームによる Concrnt リソース URI（CCURI）の名前解決を定義します。
 
 ## 1. Status of This Memo
 
@@ -85,16 +85,32 @@ ccs16djx38r2qx8j49fx53ewugl90t3y6ndgye8ykt
 ## 7 CCURI
 
 CCURI (Concrnt Resource Identifier) は、Concrnt エコシステム内のリソースを指し示すための URI スキームです。
-CCURI の形式は次の通りです。
+CCURIは2つの形式で表現されます。
+
+### 7.1 ccfs:// スキーム
+ccfs:// スキームは、コンテンツを一意のハッシュで指し示すために使用されます。
+コンテンツは、CIPs-1で定義されるConcrnt Documentを表すCDIDを使用したり、あるいはバイナリ形式のファイルであればsha256ハッシュを使用したりすることができます。
+
+以下は ccfs:// スキームの例です。
 
 ```text
-cc://<CCID or CSID>
-cc://<FQDN>
-cc://<CCID or CSID>/<key>
-cc://<FQDN>/<key>
+ccfs://<CCID>
+ccfs://<CCID>/cdid-<cdid>
+ccfs://<CCID>/sha256-<sha256 hash>
+```
 
-cc://<CCID or CSID>@<resolver FQDN>
-cc://<CCID or CSID>@<resolver FQDN>/<key>
+### 7.2 cckv:// スキーム
+cckv:// スキームは、コンテンツをキー・バリュー形式で指し示すために使用されます。
+
+
+```text
+cckv://<CCID>
+cckv://<FQDN>
+cckv://<CCID>/<key>
+cckv://<FQDN>/<key>
+
+cckv://<CCID>@<resolver FQDN>
+cckv://<CCID>@<resolver FQDN>/<key>
 ```
 
 CCURIは、CCID部とkey部から構成されます。CCID部はリソースの所有者を示し、key部はその所有者の名前空間内でのリソースの位置を示します。
@@ -228,13 +244,16 @@ endpointsの各エントリは次の要素から構成されます
 
 `endpoints` の値は、次のいずれかの形式を取ることができます (MAY)。
 
-* URIの要素を利用したパス: `"/cc/{owner}/{key}"`
+* URIの要素を利用したパス: `"/{scheme}/{owner}/{key}"`
 * 絶対 URL: `"https://cdn.example.com/{owner}/{key}"`
 
 テンプレート内では、以下のプレースホルダを使用できます。
 
 * `{uri}`
-  完全な CCURI (`cc://<CCID>/<key>`) を URL エンコードした文字列。
+  完全な CCURI  を URL エンコードした文字列。
+
+* `{scheme}`
+  CCURI のスキーム部分 (`ccfs` または `cckv`)。
 
 * `{owner}`
   CCURI の CCID 部分 (`con1...`)。通常は URL エンコード不要。
@@ -264,9 +283,9 @@ endpointsの各エントリは次の要素から構成されます
 
 この場合、クライアントは次のようにリクエストを構築します。
 
-`cc://con1alice/keys/profile` を解決する場合:
+`cckv://con1alice/keys/profile` を解決する場合:
 
-1. クライアントは `cc://con1alice/keys/profile` を URL エンコードする。
+1. クライアントは `cckv://con1alice/keys/profile` を URL エンコードする。
 `cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofile`
 
 2. テンプレートに埋め込む。
@@ -280,15 +299,15 @@ GET https://example.com/api/v1/resource?uri=cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofil
 ```json
 {
   "endpoints": {
-    "net.concrnt.resource": "/{owner}/{key}"
+    "net.concrnt.resource": "/{scheme}/{owner}/{key}"
   }
 }
 ```
 
-`cc://con1alice/posts/2025-11-23/hello` を解決する場合:
+`cckv://con1alice/posts/2025-11-23/hello` を解決する場合:
 
 ```text
-GET https://static.example.com/con1alice/posts/2025-11-23/hello
+GET https://static.example.com/cckv/con1alice/posts/2025-11-23/hello
 ```
 
 #### 9.3.3 レスポンスの例

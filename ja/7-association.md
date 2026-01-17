@@ -33,7 +33,7 @@ CIP-1で定義されたConcrnt Documentを拡張し、他のConcrnt Documentへ�
   "author": "con1...",                // CIP-1
   "owner": "con1...",                 // CIP-1
 
-  "associate": "cc://<owner>/<document-key>", // CIP-6
+  "associate": "cckv://<owner>/<document-key>", // CIP-6
   "associationVariant": "example-variant",    // CIP-6 (optional)
 
   "createdAt": "2025-11-23T12:34:56Z" // CIP-1
@@ -82,7 +82,7 @@ queryパラメータとして以下をサポートする。
 - schema: 取得するAssociation Documentのschemaを指定する。省略時は全てのschemaを対象とする。
 
 ## 5. Ack
-associationのうち、associateフィールドが指すURIがentityそのものであるURI(e.g.: `cc://<owner>`)であるものをAckと呼ぶ。
+associationのうち、associateフィールドが指すURIがentityそのものであるURI(e.g.: `cckv://<owner>`)であるものをAckと呼ぶ。
 Ackは、あるentityが他のentityを承認したことを示すAssociation Documentである。
 Ackも同様に、schema値を変化させることで様々な承認を表現することができる。
 

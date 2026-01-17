@@ -59,7 +59,7 @@ Content-Typeに `application/chunked-timeline+json` を指定する。
 
 concrntでは、あるキーで定義した要素の下に要素を作成することで、Collection/Timelineの要素として扱うことができる。
 
-たとえば、キー`cc://con1alice/my-collection`でCollectionを作成した場合、`cc://con1alice/my-collection/item1`のように要素を追加することで、そのCollectionの要素として扱うことができる。
+たとえば、キー`cckv://con1alice/my-collection`でCollectionを作成した場合、`cckv://con1alice/my-collection/item1`のように要素を追加することで、そのCollectionの要素として扱うことができる。
 
 要素には直接ドキュメントを追加できるほか、Reference Document(CIP-4)を利用して1つの要素を複数のコレクションへ追加することもできる。
 
@@ -78,8 +78,8 @@ concrntでは、あるキーで定義した要素の下に要素を作成する�
   "author": "con1...",                // CIP-1
 
   "memberOf": [                       //CIP-6
-    "cc://<CCID>/<collection-key>",
-    "cc://<CCID>/<timeline-key>"
+    "cckv://<CCID>/<collection-key>",
+    "cckv://<CCID>/<timeline-key>"
   ],
 
   "createdAt": "2025-11-23T12:34:56Z" // CIP-1
@@ -98,7 +98,7 @@ memberOfフィールドで指定されるCCURIは、そのサーバーが管理�
   "document": "<JSON string above>",
   "proof": {
     "type": "document-reference",
-    "uri": "cc://<CCID>/item-key"
+    "uri": "cckv://<CCID>/item-key"
   }
 }
 ```

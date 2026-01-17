@@ -28,12 +28,6 @@ BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
 > MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
 > RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
 
-その他の用語は、CIP-0 (Core) で定義されたものを継承する。
-
-* **Entity**: CCID を持つ暗号学的主体
-* **CCID**: `con1...` 形式のエンティティ識別子
-* **CCURI**: `cc://<CCID>/<key>` 形式の Concrnt URI
-
 ### CDID (Concrnt Document ID)
 CDIDは、Concrnt Document を一意に識別するためのIDであり、Documentの作成日時と内容のハッシュから生成される。
 
@@ -74,7 +68,7 @@ Document に付与されるオプションの「論理キー名」。
 
 * `key` は、同じ `owner` の Document 群の中で **mutable な “ヘッド”** を指す名前として利用されることがある。
 * `key`は1024バイト以内のUTF-8文字列でなければならない(MUST)。
-* `key`を指定した場合、ccURIでは`cc://<owner>/<key>`として参照される。
+* `key`を指定した場合、ccURIでは`cckv://<owner>/<key>`として参照される。
 * 同一の`owner`と`key`の組み合わせの文書が複数存在する場合、最新の`createdAt`を持つ文書が優先される(MUST)。
 
 ### 5.2 `contentType` (string, optional)
@@ -139,7 +133,7 @@ timestampはDocumentのcreatedAtフィールドのUNIXタイムスタンプ（�
 ## 7. Documentの参照
 
 DocumentはCCURI形式で参照できることが期待される。
-* CCURI形式: `cc://<owner>/<key or CDID>`
+* CCURI形式: `cckv://<owner>/<key or CDID>`
 
 ## 8. Concrnt Signed Document
 
