@@ -171,7 +171,7 @@ signatureフィードには、署名の (v, r, s) を連結したものを16進�
 ### 8.3 Affiliation の公開
 
 サーバは、所属しているエンティティの Affiliation 情報を保持し、
-`net.concrnt.resource` エンドポイントを通じて提供しなければなりません (MUST)。
+`net.concrnt.core.resolve` エンドポイントを通じて提供しなければなりません (MUST)。
 
 サーバは自身のローカルユーザーだけでなく、他の手段（フェデレーション、キャッシュなど）で取得した Affiliation Document を保存し、提供してもよい (MAY)。
 
@@ -200,7 +200,7 @@ GET https://<domain>/.well-known/concrnt
   "csid": "ccs1<bech32-encoded-address>",
   "layer": "mainnet"
   "endpoints": {
-    "net.concrnt.resource": {
+    "net.concrnt.core.resolve": {
       "template": "/resource/{uri}",
       "method": "GET"
     }
@@ -232,13 +232,13 @@ endpointsの各エントリは次の要素から構成されます
 * `query` (OPTIONAL)
   利用可能なクエリパラメーターのリスト
 
-サーバーは、少なくとも`net.concrnt.resource`エンドポイントを実装しなければなりません (MUST)。
+サーバーは、少なくとも`net.concrnt.core.resolve`エンドポイントを実装しなければなりません (MUST)。
 
 他のエンドポイントは、別の CIP によって定義されます。
 
-### 9.3 net.concrnt.resource エンドポイント
+### 9.3 net.concrnt.core.resolve エンドポイント
 
-`net.concrnt.resource` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
+`net.concrnt.core.resolve` エンドポイントは、エンティティの情報（少なくとも最新の Affiliation）を取得するために使用されます。
 
 ### 9.3.1 テンプレート構文
 
@@ -272,7 +272,7 @@ endpointsの各エントリは次の要素から構成されます
 ```json
 {
   "endpoints": {
-    "net.concrnt.resource": {
+    "net.concrnt.core.resolve": {
       "template": "/api/v1/resource",
       "method": "GET",
       "query": ["uri"]
@@ -299,7 +299,7 @@ GET https://example.com/api/v1/resource?uri=cc%3A%2F%2Fcon1alice%2Fkeys%2Fprofil
 ```json
 {
   "endpoints": {
-    "net.concrnt.resource": "/{scheme}/{owner}/{key}"
+    "net.concrnt.core.resolve": "/{scheme}/{owner}/{key}"
   }
 }
 ```

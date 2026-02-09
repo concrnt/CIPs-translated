@@ -49,7 +49,7 @@ reference.jsonスキーマはつぎのように定義される。
 
 ## 4. Referenceの解決
 
-CIP-0で定義される"net.concrnt.resource"エンドポイントに対して、Reference DocumentのURIを指定してアクセスした場合、Concrntサーバーはreferenceフィールド内のhrefで指定されたURLを304リダイレクトレスポンスでクライアントに返却しなければならない(MUST)。
+CIP-0で定義される"net.concrnt.core.resolve"エンドポイントに対して、Reference DocumentのURIを指定してアクセスした場合、Concrntサーバーはreferenceフィールド内のhrefで指定されたURLを304リダイレクトレスポンスでクライアントに返却しなければならない(MUST)。
 但し、リクエストのAcceptヘッダーが"application/concrnt.document+json"及び"application/concrnt.signed-document+json"を含む場合、Concrntサーバーはリダイレクトの代わりにreferenceドキュメントそのものを返却する。
 
 

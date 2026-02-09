@@ -60,9 +60,9 @@ CIP-0で定義されるサービスディスカバリにおいて、以下の複
   "version": "2.0",
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
-    "net.concrnt.resource": "/resource/{uri}",
-    "net.concrnt.associations": "/associations",
-    "net.concrnt.association-counts": "/association-counts",
+    "net.concrnt.core.resolve": "/resource/{uri}",
+    "net.concrnt.core.associations": "/associations",
+    "net.concrnt.core.association-counts": "/association-counts",
   }
 }
 
@@ -92,5 +92,5 @@ ackは送信元entityと送信先entity両方で持つ
 
 ## 5.2 Ackの取得
 
-`net.concrnt.acks`と`net.concrnt.ackers`エンドポイントを追加する。
+`net.concrnt.core.acks`と`net.concrnt.core.ackers`エンドポイントを追加する。
 
