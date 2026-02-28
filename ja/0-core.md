@@ -200,10 +200,7 @@ GET https://<domain>/.well-known/concrnt
   "csid": "ccs1<bech32-encoded-address>",
   "layer": "mainnet"
   "endpoints": {
-    "net.concrnt.core.resolve": {
-      "template": "/resource/{uri}",
-      "method": "GET"
-    }
+    "net.concrnt.core.resolve": "/resource/{uri}"
   }
 }
 ```
@@ -222,15 +219,7 @@ GET https://<domain>/.well-known/concrnt
   あるサーバーはこの識別子を見て、同一である場合のみそのサーバーとのリソースのやり取りを行わなければならない (MUST)。
 
 * `endpoints`
-  サーバが提供するエンドポイント名と、その URL テンプレートのマッピング。
-
-endpointsの各エントリは次の要素から構成されます
-* `template`
-  エンドポイントの URL テンプレート
-* `method`
-  HTTP メソッド (例: `GET`, `POST`)
-* `query` (OPTIONAL)
-  利用可能なクエリパラメーターのリスト
+  サーバが提供するエンドポイント名と、その URL テンプレートのマッピング。URIテンプレートの形式は、RFC6570に従います。
 
 サーバーは、少なくとも`net.concrnt.core.resolve`エンドポイントを実装しなければなりません (MUST)。
 
@@ -272,11 +261,7 @@ endpointsの各エントリは次の要素から構成されます
 ```json
 {
   "endpoints": {
-    "net.concrnt.core.resolve": {
-      "template": "/api/v1/resource",
-      "method": "GET",
-      "query": ["uri"]
-    }
+    "net.concrnt.core.resolve": "/api/v1/resource{?uri}"
   }
 }
 ```
