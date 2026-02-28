@@ -1,14 +1,10 @@
-# CIP-1 Concrnt Document
+# CIP-1 Concrnt Document System
 
 ## 0. Abstract
 
-本ドキュメントでは、Concrnt エコシステム内で用いられる **Concrnt Document** の構造と意味について定義する。
+本ドキュメントでは、Concrnt エコシステム内で用いられる Concrnt Document の構造と意味について定義する。
 
-Concrnt Document は、Concrnt Core (CIP-0) で定義された CCID / CCURI の上に載る「署名付きデータコンテナ」であり、以下のような用途に用いられる。
-
-* 投稿、プロフィール、リアクションなどのアプリケーションデータの表現
-* タイムラインやコレクションへの所属の宣言
-* 参照関係（reply / like / follow 等）の記録
+Concrnt Document Systemは署名により操作が証明された、jsonドキュメントのための階層型データベースである。
 
 ## 1. Status of This Memo
 
@@ -51,7 +47,6 @@ MIMEタイプは `application/concrnt.document+json` である。
   "value": { ... },                   // required
 
   "author": "con1...",                // required
-  "owner": "con1...",                 // optional
 
   "createdAt": "2025-11-23T12:34:56Z" // required
 }
@@ -64,12 +59,10 @@ MIMEタイプは `application/concrnt.document+json` である。
 
 ### 5.1 `key` (string, optional)
 
-Document に付与されるオプションの「論理キー名」。
+Document に付与されるcckv
 
-* `key` は、同じ `owner` の Document 群の中で **mutable な “ヘッド”** を指す名前として利用されることがある。
 * `key`は1024バイト以内のUTF-8文字列でなければならない(MUST)。
-* `key`を指定した場合、ccURIでは`cckv://<owner>/<key>`として参照される。
-* 同一の`owner`と`key`の組み合わせの文書が複数存在する場合、最新の`createdAt`を持つ文書が優先される(MUST)。
+* 同一の`key`をもつ文書が複数存在する場合、最新の`createdAt`を持つ文書が優先される(MUST)。
 
 ### 5.2 `contentType` (string, optional)
 Document のメディアタイプを表す文字列。
@@ -97,13 +90,7 @@ Document が表現する実データ。
 
 * `author` は CIP-0 で定義された CCID (`con1...`) でなければならない (MUST)。
 
-### 5.6 `owner` (string, optional)
-
-Document の「論理的な所有者」を表す CCID。
-
-* `owner` が省略された場合、その Document の所有者は `author` と見なされる (MUST)。
-
-### 5.7 `createdAt` (string, required)
+### 5.6 `createdAt` (string, required)
 
 Document が作成された時刻。
 
@@ -114,10 +101,10 @@ Document が作成された時刻。
 
 CDIDは16バイトの値であり、次の構造を持つ。
 
- <-    10 bytes    -> <- 6bytes -> 
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
-|        hash        | timestamp  |
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+ <- 6bytes -> <-    10 bytes    ->
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| timestamp  |        hash        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 hashはDocumentのJSONシリアライズをKeccak256でハッシュ化したものの先頭10バイト。
 timestampはDocumentのcreatedAtフィールドのUNIXタイムスタンプ（ミリ秒単位）を6バイトで表現したもの。
@@ -129,13 +116,7 @@ timestampはDocumentのcreatedAtフィールドのUNIXタイムスタンプ（�
 最終的に次のような26文字の文字列になる。
 9t4r7by29zwbr43c06dadzwz84
 
-
-## 7. Documentの参照
-
-DocumentはCCURI形式で参照できることが期待される。
-* CCURI形式: `cckv://<owner>/<key or CDID>`
-
-## 8. Concrnt Signed Document
+## 7. Concrnt Signed Document
 
 Documentの発行を証明する必要がある場合、これに署名を付与することができる。
 署名は次の形式を持つ。
@@ -160,7 +141,7 @@ MIMEタイプは `application/concrnt.signed-document+json` である。
     * `signature`
         Document の JSON 文字列に対する署名の16進エンコード表現。
 
-### 8.1 concrnt-ecrecover-direct
+### 7.1 concrnt-ecrecover-direct
 
 CCID 所有者の秘密鍵で直接署名する方式。
 
