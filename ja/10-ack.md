@@ -44,8 +44,13 @@ Associationとは状態モデル・データモデルの完全に異なる独立
 * `schema` の値を変化させることで、様々な種類の承認 (フォロー等) を表現できる。
 * `key` に値が入っていてはならない (MUST NOT)。
 
-クライアントは、Ack Documentを、`associate` のCCURIのownerを管理する
-Concrntサーバーに対して、CIP-3で定義されるcommitエンドポイントへ送信しなければならない (MUST)。
+クライアントは、Ack Documentを、自身 (`author`) の所属サーバー、または `associate` のownerの
+所属サーバーの、CIP-3で定義されるcommitエンドポイントへ送信する。
+サーバーは、`author` と `associate` のownerの**いずれか一方でも**自身の管理下にある場合、
+そのAck Documentを受理し状態を保存しなければならない (MUST)。
+これはCIP-3 §3.1のコミット対象導出 (associate owner側のみ) に対する例外である。
+`author` と `associate` のownerの**いずれも**管理していないサーバーは、
+HTTP 421 Misdirected Request で拒否しなければならない (MUST)。
 
 ## 4. 状態モデル
 
@@ -59,11 +64,28 @@ Ackは、(送信元 `author`, 送信先 `associate` のowner, `schema`) の3つ�
 同一の3つ組に対する再コミットは、状態と対応するDocumentを上書きする (upsert)。
 これにより ack → unack → ack のような状態遷移を表現でき、操作は冪等である。
 
+ただし、上書きは無条件であってはならない。サーバーは、保存済みのAck/unack Documentと
+新規Documentのdocument ID (CDID; `createdAt` 順の比較が可能) を比較し、
+**新しい遷移である場合のみ**状態を変更しなければならない (MUST)。
+古いまたは同一の遷移は、状態の変更・代理送信 (§5)・配布のいずれも行わない
+副作用なしのno-opとして成功応答する (MUST)。
+これにより、捕捉された古いack/unack Documentの再送による状態の巻き戻しは成立しない。
+
 ## 5. Ackの配布
 
 Ackは送信元entityと送信先entityの両方のサーバーで保持される (MUST)。
 送信先entityが他サーバーの管理下にある場合、送信元のサーバーはAck/unack Documentを
 送信先entityを管理するサーバーのcommitエンドポイントへ代理で送信しなければならない (MUST)。
+送信先の所属サーバーは、代理送信されたAck/unack Documentを、署名が有効である限り
+通常のコミットとして受理しなければならない (MUST)。
+
+### 5.1 認可
+
+Ack/unackのコミットは、CIP-12のポリシースタック評価の**対象外**である。
+サーバーが行う検査は、Signed Documentの署名検証、§3の経路検査 (author/associate ownerの管理)、
+および相互ブロック関係の検査 (CIP-3 §4) のみである。
+すなわち、有効な署名を持つauthorは、経路とブロックの制約の範囲内で自身のAck状態を自由に制御できる。
+CIP-12のアクション語彙にはAck/unackに対応するアクションが存在しない (将来の拡張とする)。
 
 また、Ack Documentは `distributes` フィールド (CIP-7) を持つことができ、
 その場合CIP-7の規定に従いReference Documentが配布される。

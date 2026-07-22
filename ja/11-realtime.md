@@ -45,11 +45,10 @@ realtimeエンドポイントは、websocketプロトコルを使用してクラ
 
 ```json
 {
-    "action": "subscribe",
-    "resources": [
+    "type": "subscribe",
+    "prefixes": [
         "<CCURI>",
-        "<CCURI>",
-        ...
+        "<CCURI>"
     ]
 }
 ```
@@ -58,6 +57,7 @@ realtimeエンドポイントは、websocketプロトコルを使用してクラ
   メッセージ種別。購読の開始は `"subscribe"` を指定する。
   後方互換のため、サーバーは `"listen"` を `"subscribe"` の別名として受理しなければなりません (MUST)。
   新規のクライアント実装は `"subscribe"` を使用するべきです (SHOULD)。
+  このほか、`"h"` はハートビートを表すメッセージ種別であり、サーバーは何も行わず受理します。
 
 * `prefixes`
   購読するリソースのCCURIの配列。
@@ -65,10 +65,14 @@ realtimeエンドポイントは、websocketプロトコルを使用してクラ
 
 `prefixes` にフィード (キー階層) のCCURIを指定することで、そのキー配下に新たに発生したDocumentの追加イベントを購読できます。
 
-複数回subscribeメッセージが送信された場合、サーバーは最新の購読リストを保持し、以前の購読リストは上書きされます。
+複数回subscribeメッセージが送信された場合、サーバーは最新の購読リストを保持し、以前の購読リストは上書きされます (購読リストの全置換)。
+明示的なunsubscribeメッセージは存在せず、購読の解除は縮小した購読リストによるsubscribeの再送によって行います。
 
 CCURIに指定するリソースは、そのサーバーが管理しているものでなくてもよい。
-外部リソースが要求された場合、サーバーはそのリソースを所有するサーバーのrealtimeエンドポイントに対して代理で購読リクエストを送信し、イベントを中継しなければなりません (MUST)。中継の詳細は4章で述べる。
+外部リソースが要求された場合、サーバーはそのリソースを所有するサーバーのrealtimeエンドポイントに対して代理で購読リクエストを送信し、イベントを中継しなければなりません (MUST)。
+
+> **編集ノート:** サーバー間中継の詳細プロトコル (上流接続の多重化、購読の張り替え、再接続方式、
+> 中継イベントの `source` の扱い等) は現時点で未規定である。
 
 サーバーは、未知の `type` を持つメッセージを受信した場合、接続を切断せず無視するべきです (SHOULD)。
 
@@ -110,9 +114,33 @@ CCURIに指定するリソースは、そのサーバーが管理しているも
   * `"created"`: 作成されたDocument(キーは `uri` と同じ)を含む。
   * `"associated"`: 作成されたAssociation Document(キーは `association` と同じ)を含む。
   * `"deleted"` / `"unassociated"`: 通常このフィールドは省略される。
-  documentが保護されているなどの場合において、サーバーはこのフィールドを省略してもよい (MAY)。
+
+  **保護されたDocumentの編集 (redaction)**: サーバーは、イベントの送出時に、対象Documentの
+  読み取りアクション (`record:read` / `association:read`, CIP-12) を**ゲスト(匿名)リクエスタ**で
+  評価し、匿名での読み取りが許可されないDocumentについては `documents` フィールドから
+  その内容を省略しなければならない (MUST)。この場合もイベント自体
+  (`type` / `source` / `uri` / `timestamp` 等) は配送される。
+  クライアントは、内容が省略されたイベントを受信した場合、必要に応じて自身の認証情報を
+  用いた通常のResolve/Query (CIP-0, CIP-5) でDocumentを取得する。
 
 * `timestamp` (required)
   イベントの発生時刻。
   `"created"` イベントでは、Documentの `createdAt` の値が入る。
   それ以外のイベントでは、サーバーがイベントを発行した時刻が入る。
+
+## 4. Security Considerations
+
+* Realtime APIの配信内容は**匿名で閲覧可能な情報**に限定される。購読自体には認証を要求しない
+  代わりに、匿名リクエスタで読み取りが許可されないDocumentの内容は §3.2 のredaction規則により
+  イベントから省略されなければならない (MUST)。これにより、購読者ごとの認可評価や
+  サーバー間中継時のアイデンティティの伝搬を必要とせず、保護されたDocumentの内容が
+  未認可の購読者(および中継先)へ漏えいすることを防ぐ。
+* イベントのメタデータ (`uri` 等のキー情報・イベントの発生事実) は保護の対象外である。
+  リソースの存在自体を秘匿する必要がある用途では、Realtime APIによるイベント配信を
+  行うべきではない (SHOULD NOT)。
+
+## 5. References
+
+* RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
+* RFC 8174 – Clarifications to RFC 2119
+* RFC 6455 – The WebSocket Protocol

@@ -83,21 +83,24 @@ Commitエンドポイント (CIP-3) に送信することで行う。
 3. すべての対象について権限が確認できた場合にのみ、列挙した集合を削除する。
    列挙後に新たに作成されたDocumentは、この削除の対象に含めてはならない (MUST NOT)。
 
-削除された各Documentについて、単一削除と同様に、tombstoneの記録 (§5)、
+削除された各Documentについて、単一削除と同様に、
 削除イベントの発行、配布先への伝搬 (§6)、Chunkline撤回リストへの掲載 (§7) を行う。
 
-レスポンスとして返す対象は、`<key>*` 形式 (自身を含む) の場合は `<key>` 自身のDocumentである。
+レスポンス (CIP-3 §3.3) として返す対象は、削除された対象をURIの辞書順 (昇順) で並べたときの
+先頭のDocumentである。すなわち `<key>*` 形式 (自身を含む) の場合は `<key>` 自身のDocumentであり、
+`<key>/*` 形式 (自身を含まない) の場合は最初の子孫キーのDocumentである。
 
-## 5. tombstoneとリプレイ防御
+## 5. リプレイ防御
 
 削除の永続性は、CIP-3 §3.4 で定義されるリプレイガード (backdate windowと
-削除文書のコンテンツID tombstone) によって担保される。
-削除が受理された場合、サーバーは削除された各Documentのccfs URIをtombstoneとして記録する。
+コミットログによる重複排除) によって担保される。
+削除された各Document、および削除コマンド (`kind: "delete"`) 自身のdocument IDは
+コミットログに残り続けるため、捕捉されたそれらのDocumentを再コミットしても
+no-opとなり適用されない。
 
-tombstoneの記録は、削除対象を管理するサーバー (authoritative server) の責務である。
-自身が管理するDocumentへの削除を受理した場合はtombstoneを記録するが、
-リモートのEntityに帰属する削除を中継・転送する場合には、中継サーバーはtombstoneを記録しない。
-リプレイ防御は最終的にauthoritative server側のtombstoneによって担保される。
+リプレイ防御は、削除対象を管理するサーバー (authoritative server) 自身のコミットログと
+backdate windowによって担保される。リモートのEntityに帰属する削除を中継・転送する
+サーバーに、追加の防御は要求されない。
 
 ## 6. 削除の伝搬
 
@@ -108,6 +111,24 @@ tombstoneの記録は、削除対象を管理するサーバー (authoritative s
 削除された対象のSigned Documentを同梱しなければならない (MUST)。
 これにより、受信側は追加の問い合わせなしに削除対象を特定できる。
 範囲削除の場合は、削除された対象ごとに1つの配送を行い、それぞれに該当対象を同梱する。
+
+### 6.1 受信側の検証
+
+自身が削除対象のauthoritative serverではないサーバー (配布先を管理するサーバー) が
+伝搬された削除を受理してよいのは、以下の**すべて**を確認できた場合に限られる (MUST)。
+
+1. `references` に同梱された削除対象のSigned Documentが構造的・暗号学的に有効である
+   (proofの検証を通過し、導出したcckv/ccfs identityが `references` のキーのURIと一致する)。
+2. 同梱された対象Documentの `author` が、削除Documentの `author` と一致する。
+3. 同梱された対象Documentの署名済み `distributes` に、自身が管理する配布先が含まれている。
+4. 削除しようとするローカルのDocumentが、その配布先に対して自動生成されたReference Document
+   (`<配布先CCURI>/<対象のCDID>`、CIP-7 §4.1) であり、保存されているReferenceの `value.href` が
+   同梱された対象を指している。
+5. そのReference Documentに対する削除のポリシー評価 (CIP-12) が許可となる。
+
+伝搬された削除によって削除できるのは、上記の自動生成されたReference Documentのみである。
+それ以外のローカルDocumentを伝搬削除の対象としてはならない (MUST NOT)。
+確認に失敗した伝搬削除は拒否する。
 
 
 ## 7. Security Considerations
@@ -121,4 +142,4 @@ tombstoneの記録は、削除対象を管理するサーバー (authoritative s
 
 * RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
 * RFC 8174 – Clarifications to RFC 2119
-* CIP-3 – Commit (リプレイガード、tombstone)
+* CIP-3 – Commit (リプレイガード、コミットログ)

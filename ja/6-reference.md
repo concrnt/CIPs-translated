@@ -59,12 +59,12 @@ reference.jsonスキーマはつぎのように定義される。
 * `createdAt` (任意)
   参照先Documentの `createdAt` フィールドの値。
 
-### 3.2 Referenceの連鎖の禁止
+### 3.1 Referenceの連鎖の禁止
 
 Reference Documentの `href` は、別のReference Documentを指してはならない (MUST NOT)。
 すなわち、Referenceの参照先は常に実体のDocumentでなければならず、Referenceを多段に連鎖させることはできない。
 
-### 3.1 参照先メタデータの解決
+### 3.2 参照先メタデータの解決
 
 サーバーは、Reference Documentを受理する際、参照が指す先のDocumentの `schema` および `createdAt` を、Reference自身の保存レコードに関連付けて保持するべきである (SHOULD)。
 
@@ -120,17 +120,28 @@ CIP-1のSigned Documentにproofタイプ `document-reference` を定義する。
    同梱されていない場合はリゾルバ (CIP-0) を通じて取得する。
 4. 取得したSigned Documentを検証する。
    参照先Documentがさらに `document-reference` proofを持つこと (Referenceの連鎖) を、
-   作成者は行ってはならない (MUST NOT、§3.2)。
+   作成者は行ってはならない (MUST NOT、§3.1)。
    検証者はロバストネス原則にもとづき誤った連鎖を許容してよいが (MAY)、その場合も
    検証深度に上限を設けなければならない (MUST)。リファレンス実装の許容上限は4段である。
 5. 参照先Documentの `author` が、このReference Documentの `author` と一致することを確認する。
+6. **参照先Documentの同一性が `href` と一致することを確認する (MUST)。**
+   * `href` がcckv URIの場合: 参照先Documentの `key` が `href` と一致すること
+     (key部を持たないEntity参照の場合は、参照先のEntity Documentの `author` がownerと一致すること)。
+   * `href` がccfs URI (`concrnt` 種別) の場合: 参照先Documentから導出したCDIDとownerが
+     `href` のものと一致すること。
+   * `href` がHTTP(S) URLまたはblobを指す場合、`document-reference` proofでは正当性を証明できない。
+     そのようなReferenceは通常のdirect/subkey proofで署名されなければならない (MUST)。
+
+   この確認は、参照先が `references` にインライン同梱されている場合にも省略してはならない (MUST NOT)。
+   これを省略すると、同一authorによる別の正当なDocumentを差し替えて、異なる `href` に対する
+   証明として流用できてしまう。
 
 参照先Document自体が正しく署名されており、かつauthorが一致する場合、
 このReference Documentは「author自身が自分のDocumentを配布した」ものとみなせるため、
 インラインの `references` を信頼しても偽造は成立しない。
 これにより、参照先のオリジンサーバーが到達不能な場合 (移行中のインポート等) でもコミットの検証が可能となる。
 
-## 5. References
+## 6. References
 
 - RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
 - RFC 8174 – Clarifications to RFC 2119

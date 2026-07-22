@@ -116,8 +116,8 @@ Revoked Subkey Documentは、Enact Documentと同様にエンティティ本体�
 
 Revoked Subkey Documentは、当該サブキーの**有効期間**を表明する。
 
-* 有効期間の開始: `value` に埋め込まれたEnact Documentの `createdAt`。
-* 有効期間の終了: Revoked Subkey Document自身の `createdAt`。
+* 有効期間の開始: `value` に埋め込まれたEnact Documentの `createdAt` (境界値を含む)。
+* 有効期間の終了: Revoked Subkey Document自身の `createdAt` (境界値を含む)。
 
 すなわち、キーの解決結果がEnact Document (schema `subkey.json`) であればサブキーは現在有効であり、
 Revoked Subkey Document (schema `revoked-subkey.json`) であれば「埋め込まれたEnactの `createdAt` から
@@ -126,8 +126,8 @@ Revoked本体の `createdAt` までの期間に限り有効だった」ことを
 このモデルにより、失効後もサブキーの**失効前の正当な署名は引き続き検証可能**である (§6)。
 一方、失効以後にそのサブキーで作成された署名は検証に失敗する。
 
-なお、Enact Documentの上書き時にはCIP-3 §3.4の上書きtombstoneが旧Enact Documentの
-コンテンツIDに記録されるため、捕捉された旧Enact Documentを再コミットして
+なお、上書きされた旧Enact Documentのdocument IDはコミットログ (CIP-3 §3.4) に
+残り続けるため、捕捉された旧Enact Documentを再コミットして
 失効を巻き戻すこと (rollback) はできない。
 
 ### 4.2 削除による無効化との関係
@@ -188,6 +188,8 @@ subkey proofを持つSigned Documentの検証は、以下の手順で行わな�
 4. Enact Document (および Revoked Subkey Document) の `author` フィールドが、
    検証対象Documentの `author` フィールドと一致することを確認する (MUST)。
 5. 検証対象Documentの `createdAt` が、手順3で決定した有効期間内であることを確認する (MUST)。
+   有効期間の境界は**両端とも境界値を含む (inclusive)**。すなわち、Enact Documentの `createdAt` と
+   同時刻の署名、およびRevoked Subkey Documentの `createdAt` と同時刻の署名は有効である。
 6. 検証対象Documentの文字列をKeccak256でハッシュ化し、`signature` からECRECOVERで公開鍵を復元、
    導出したアドレスがEnact Documentの `value.ckid` と一致することを確認する (MUST)。
 

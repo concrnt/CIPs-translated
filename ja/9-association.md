@@ -33,8 +33,8 @@ Association Documentと呼ぶ。Association Documentは `associate` フィール
 
   "author": "con1...",                // CIP-1
 
-  "associate": "cckv://<target-owner>/<document-key>", // CIP-8
-  "associationVariant": "example-variant",             // CIP-8 (optional)
+  "associate": "cckv://<target-owner>/<document-key>", // CIP-9 (本仕様)
+  "associationVariant": "example-variant",             // CIP-9 (本仕様, optional)
 
   "createdAt": "2025-11-23T12:34:56Z" // CIP-1
 }
@@ -64,6 +64,15 @@ Associationは、次の5要素の組み合わせで一意に識別される。
 
 サーバーは、この組み合わせが一致するAssociationを重複して受理してはならない (MUST NOT)。
 
+一意性の判定は、`associate` のownerを管理するauthoritative serverが行う。
+`value` の比較のためのシリアライズ方法は実装定義であるが、同一サーバー内で安定でなければならない
+(一意性はauthoritative server内で完結するため、サーバー間でシリアライズが一致する必要はない)。
+
+重複するAssociationのコミットを受信した場合、サーバーはエラーとせず、
+**何も保存しない no-op として成功応答を返す (MUST)**。
+これは、配布 (CIP-7) の再試行等による同一Associationの再配送を冪等にするためである。
+重複と判定されたコミットに対しては、Reference配布やイベント配信 (§3.2) を行ってはならない (MUST NOT)。
+
 ### 3.2 Associationの配布とイベント
 
 Association Documentのコミットに成功した場合、サーバーは関連付け先Document
@@ -83,15 +92,17 @@ Associationの削除は、CIP-4で定義される削除Document (`kind: "delete"
 CIP-0で定義されるサービスディスカバリにおいて、以下の複数種類のエンドポイントを追加して広告する。
 以下はテンプレートを使い、エンドポイントを広告している例である。
 
+```json
 {
   "version": "2.0",
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
     "net.concrnt.core.resolve": "/resource/{uri}",
     "net.concrnt.core.associations": "/associations{?uri,schema,variant,author}",
-    "net.concrnt.core.association-counts": "/association-counts"{?uri,schema},
+    "net.concrnt.core.association-counts": "/association-counts{?uri,schema}"
   }
 }
+```
 
 ### 4.1 associations
 
