@@ -235,6 +235,36 @@ _concrnt.alice.example.net. IN TXT "cckv://con1t0te...@example.com"
 サーバは同一エンティティ (同一 CCID) に対して複数の Entity Document を受け取った場合、より新しいもの
 （`createdAt` を先頭に持つ CDID の辞書順比較で判定できる）を優先して保存しなければなりません (MUST)。
 古い、あるいは同一の Entity Document の再送は、エラーとせず no-op として成功応答してよい (MAY)。
+
+### 8.5 未知のエンティティの解決
+
+Concrnt にはグローバルなディレクトリが存在しないため、エンティティの所属は
+署名済み Entity Document の `value.domain` からのみ得られます。
+未知の CCID を解決しようとするサーバー・クライアントは、次の順序で候補を試みるべきです (SHOULD)。
+
+1. ローカルに保存・キャッシュ済みの Entity Document。
+2. CCURI に付与されたリゾルバヒント (`@<FQDN>`、§7.2)、またはリクエストに同梱された
+   Entity Document (CIP-1 の `references` 等) から得たドメインを初期候補として、
+   その候補サーバーの resolve エンドポイントから Entity Document を取得する。
+
+いずれの経路で取得した場合も、Entity Document は proof の検証を通過し、`author` が
+要求した CCID と一致しなければなりません (MUST)。ヒント自体を信頼の根拠としてはなりません
+(MUST NOT、§7.2)。検証を通過した Entity Document はキャッシュしてよく (MAY)、
+以後はヒントなしの裸の CCID も解決できます。
+
+上記の候補がすべて存在しない場合、**裸の未知の CCID はプロトコル上解決不能**であり、
+解決の失敗として扱います。ヒントの伝搬 (リゾルバヒント付き CCURI の使用、Entity Document の同梱)
+は、この初回接触問題を緩和するためにクライアント・サーバー双方が行うべき (SHOULD) 慣行です。
+
+ただし、Concrnt においてこの解決手順が必要になるのは、主にタイムラインを解決する場面です。
+あるサーバーのタイムラインに書き込む際には、必ずその書き込みを行ったエンティティが
+書き込み先サーバーで解決され、キャッシュされます。したがって、あるサーバーの
+タイムラインを閲覧するのに必要な CCID の解決情報は、自動的にすべてそのサーバーに
+キャッシュされていることになります。ヒントの伝搬が必要になるのは初回接触などの
+限られた場面のみであり、通常の利用形態においてはこのキャッシュの仕組みだけで
+解決は十分に機能します。
+
+
 ## 9 サーバ
 
 Concrnt サーバは、Concrnt エコシステム内でリソースをホストし、配信する役割を担います。
@@ -253,9 +283,9 @@ GET https://<domain>/.well-known/concrnt
 ```json
 {
   "version": "2.0",
-  "domain": "example.com"
+  "domain": "example.com",
   "csid": "ccs1<bech32-encoded-address>",
-  "layer": "mainnet"
+  "layer": "mainnet",
   "endpoints": {
     "net.concrnt.core.resolve": "/resource/{uri}"
   }
@@ -424,6 +454,11 @@ Accept ヘッダによって、リソースの別表現を要求できる場合�
 * 秘密鍵はクライアント側で生成・保持されるべきであり、サーバに送信してはならない (MUST NOT)。
 * CCID は公開鍵から導出されるため、秘密鍵の漏洩はエンティティの乗っ取りに直結します。
   実装者は鍵生成・保管・バックアップについて十分に注意する必要があります。
+* `.well-known/concrnt` 文書自体は署名されていません。ドメインとの結びつきは
+  TLS (Web PKI) にのみ依存します。エンティティの帰属の信頼の根拠は、あくまで署名済み
+  Entity Document の検証 (§8.2, §8.5) であり、well-known 文書の記載を単独で
+  信頼の根拠としてはなりません。サーバーは、リソースをやり取りする前に相手サーバーの
+  `layer` (§9.1) の一致を確認しなければなりません (MUST)。
 
 ## 11. Abuse Potential
 
