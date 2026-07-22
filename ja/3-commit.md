@@ -45,9 +45,24 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
 
 * `key` フィールドが存在する場合: `key` のCCURIの owner 部が示すEntityの所属サーバ
 * `associate` フィールドが存在する場合 (CIP-9, CIP-10): `associate` のCCURIの owner 部が示すEntityの所属サーバ
+* `kind` が `delete` の場合 (CIP-4): `value` の削除対象CCURIの owner 部が示すEntityの所属サーバ
+* `kind` が `entity` の場合 (CIP-0): `value.domain` が示すサーバ (所属先サーバ)
 
 owner 部から所属サーバへの解決は、CIP-0で定義される名前解決 (Entity documentの `domain`) によって行う。
-コミット対象が受信サーバの管理外である場合の挙動は、CIP-3では定義しない。
+
+サーバーは、自身がコミット対象の管理者でないリクエストを、HTTP 421 Misdirected Request で
+拒否しなければならない (MUST)。ただし以下は例外である。
+
+* Ack/unack Document: `author` と `associate` のownerのいずれか一方を管理していれば受理する (CIP-10 §3)。
+* 配布 (CIP-7) によるReference Documentの代理コミット、および削除の伝搬 (CIP-4 §6):
+  配布先リソースのownerを管理するサーバーが受理する。
+
+また、権威・認可の対象となるフィールド (`key`・`associate`・削除対象・`distributes` の各エントリ) の
+owner部に、エイリアス形式 (`@<FQDN>`、CIP-0 §7.2) を使用してはならない (MUST NOT)。
+サーバーはこれを含むコミットを拒否しなければならない (MUST)。
+署名済みのルーティング識別子が可変のDNSに依存することを防ぐため、クライアントはエイリアスを
+事前にCCIDへ解決 (CIP-0 §8.3) してからDocumentを作成すること。
+Resolve経路 (CIP-0 §9.3) でのエイリアス利用はこの制限の対象外である。
 
 ### 3.2 Document の種別 (kind)
 
@@ -83,6 +98,20 @@ Commitエンドポイントは、CIP-1で定義される `kind` フィールド�
 * `ccfs`
   Documentの内容から生成されたCDID (CIP-1) を示すCCURI。
 
+`cckv` / `ccfs` は署名対象外の情報フィールド (CIP-1 §7) であり、サーバーが署名済みバイト列から
+**自ら導出した値**を設定する。リクエストにクライアントが付与した外側の `cckv` / `ccfs` は
+無視され、サーバー導出値で上書きされる。クライアントは、外側のメタデータを暗号学的な根拠として
+扱ってはならない (MUST NOT)。
+
+導出されるccfs URIのowner部は、次のように決定される (MUST)。
+
+* `key` を持つDocument (record): `key` のowner部 (CCIDに限らず、FQDN/CSID形式の場合もそのまま)。
+* association: `associate` のowner部。
+* ack / unack: `associate` が指す対象Entityの解決済みCCID。
+
+すなわちccfs identityのownerは**名前空間の所有者**であり、Documentの `author` (署名者) ではない。
+authorと名前空間所有者が異なるDocument (他者の名前空間への書き込み等) では両者が乖離する点に注意。
+
 kindごとの返却内容は以下の通りである。
 
 * `record`: 送信されたSigned Documentに `cckv` と `ccfs` を付与したもの。
@@ -96,18 +125,32 @@ Commitエンドポイントは署名済みDocumentをそのまま受理するた
 
 * **未来時刻の拒否**: `createdAt` がサーバー時刻より一定以上未来であるDocumentを拒否する。参考実装では許容スキューは12時間である。遠い未来の `createdAt` を許すと、後述のaccept-if-newer比較においてそのDocumentが以後のすべての更新に優先してしまうためである。
 * **過去時刻の拒否 (backdate window)**: `createdAt` が一定以上過去であるDocumentを拒否する。参考実装ではこの窓は7日間である。
-* **削除文書のtombstone**: `kind: "delete"` によって明示的に削除されたDocumentは、そのccfs URI (コンテンツID) を少なくともbackdate windowと同じ期間tombstoneとして記録し、その期間中の同一Documentの再コミットを拒否する。tombstoneはcckvキーではなくコンテンツIDに対して記録されるため、削除されたキー自体は新しいDocumentで再利用できる (新しいDocumentは異なるCDIDを持つため通常どおりコミットされる)。backdate windowとtombstoneを組み合わせることで、捕捉されたDocumentは「まだtombstoneが有効」か「すでに古すぎて受理されない」かのいずれかとなり、削除がリプレイに対して恒久的になる。
-* **上書き時のtombstone**: 既存のキーが異なるDocumentで上書きされた場合、旧バージョンのccfs URIを同様にtombstoneとして記録する。これにより、捕捉された旧バージョンの再コミットによるロールバックが防がれ、後続の削除が旧バージョンに対しても恒久的になる。ただし、保存済みと同一のDocumentの再送 (冪等な再配送) に対してはtombstoneを記録してはならない (MUST NOT)。
+* **コミットログによる重複排除**: サーバーは、適用したDocumentのdocument ID (CDID) を**コミットログ**として記録する。Commit処理の冒頭で、受信したDocumentのdocument IDがすでにコミットログに存在する場合には、Documentを再適用せず、no-opとして成功を返す。document IDはDocumentの内容全体から導出されるため、これにより同一Documentの再送 (クライアントのリトライ、連合経路の再配送、ダンプの再インポート) は安全な冪等操作となる。同時に、これがリプレイガードでもある: 削除済み・上書き済みのDocumentのdocument IDもコミットログに残り続けるため、捕捉されたDocumentを再送しても適用されない。削除を行った `kind: "delete"` のDocument自身も同様にコミットログに残るため、捕捉された削除コマンドをリプレイし、同じキー (または範囲) に後から作成されたDocumentを削除させることもできない。
+* **コミットログの保持期間**: コミットログのエントリをGC等で破棄する場合、少なくとも「コミット処理時刻」と「対象Documentの `createdAt`」の**遅い方**にbackdate windowを加えた時刻までは保持しなければならない。これにより、捕捉されたDocumentは「まだコミットログに存在してno-opになる」か「すでにbackdate windowより古く拒否される」かのいずれかとなり、削除がリプレイに対して恒久的になる。(処理時刻のみを起点にすると、未来スキュー上限付近の `createdAt` を持つDocumentが、エントリ破棄の時点でまだbackdate windowの範囲内に残り、スキュー分の期間だけ再コミット可能になってしまう。)
+* **適用されなかったコミットの非記録**: 後述のaccept-if-newer比較で古いと判定された場合など、実際には何も適用しなかったコミットについては、コミットログを記録してはならない (MUST NOT)。
 
-また、`kind: "entity"` のコミットは accept-if-newer 方式で処理される。
-サーバーは既存のEntity documentとdocument ID (CDID; `createdAt` が先頭に符号化されるため時刻順の比較が可能) を比較し、新しい場合のみ上書きする。
-古いまたは同一のDocumentの再送はエラーとせず、no-opとして成功を返す (MUST)。これにより同一Documentの再送は安全である。
+なお、コミットログの重複チェックは署名検証に先立って行ってよい (MAY)。document IDはDocumentの
+全バイト列から導出されるため、チェックの結果がリクエスタのすでに保持する情報以上を漏らすことはなく、
+高コストな検証 (リモートのサブキー解決等) を既知のDocumentに対して省略できる。
+
+また、`kind: "entity"` のコミット、および `key` を持つDocumentによる既存キーの上書きは、
+**accept-if-newer** 方式で処理されなければならない (MUST)。
+サーバーは既存のDocumentと新規Documentのdocument ID (CDID; `createdAt` が先頭に符号化されるため
+時刻順の比較が可能であり、同時刻は内容ハッシュによる決定的なタイブレークとなる) を比較し、
+新しい場合のみ上書きする。古いまたは同一のDocumentの再送はエラーとせず、保存もコミットログの
+記録も行わないno-opとして成功を返す (MUST)。これにより、捕捉された旧バージョンの再送による
+保存済みDocumentのロールバックは成立しない (上書きされた旧バージョンはコミットログにも
+残っているため、通常は冒頭の重複排除の時点でno-opとなる)。
+
+なお、サーバー運用者が自身の管理経路 (マイグレーション・インポート等) において
+§3.4の時刻境界を緩和することは妨げない。その経路・条件は実装定義であり、本仕様のスコープ外である
+(CIP-1 §5.6、CIP-2 §6 参照)。
 
 ## 4. セキュリティと認証
 
 サーバーは、Commitエンドポイントへのリクエストが適切に署名されていることを検証し、署名者がリソースの変更を行う権限を持っていることを確認しなければならない (MUST)。
 
-* 署名検証に失敗したリクエスト、または形式不正なリクエスト (Documentのサイズ上限 CIP-1 §4.1 の超過を含む) に対しては、HTTP 400 Bad Request を返す。
+* 署名検証に失敗したリクエスト、または形式不正なリクエスト (Documentのサイズ上限 CIP-1 §4.1 の超過、`key` の1024バイト上限 CIP-0 §7.2 の超過、`associationVariant` の512バイト上限 CIP-9 §3 の超過を含む) に対しては、HTTP 400 Bad Request を返す。
 * 署名は正当だが権限のないリクエストに対しては、HTTP 403 Forbidden を返す。
 
 また、サーバーはコミット対象のownerがリクエスタ (Documentのauthor) をブロックしている場合、そのコミットを拒否してもよい (MAY)。参考実装は、対象ownerのブロックリストにauthorが含まれる場合にコミットを拒否する。
