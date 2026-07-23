@@ -120,6 +120,10 @@ CCURIに指定するリソースは、そのサーバーが管理しているも
   評価し、匿名での読み取りが許可されないDocumentについては `documents` フィールドから
   その内容を省略しなければならない (MUST)。この場合もイベント自体
   (`type` / `source` / `uri` / `timestamp` 等) は配送される。
+  同梱されるSigned Documentがネストされた `references` (CIP-1) を持つ場合
+  (例: 配布Reference Documentに内包された元Document)、その各エントリにも同じ
+  匿名read評価を適用し、許可されないエントリは省略しなければならない (MUST)。
+  さらに深い階層のネストは一律に省略してよい (MAY)。参考実装は省略する。
   クライアントは、内容が省略されたイベントを受信した場合、必要に応じて自身の認証情報を
   用いた通常のResolve/Query (CIP-0, CIP-5) でDocumentを取得する。
 
