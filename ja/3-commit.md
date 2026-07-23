@@ -50,12 +50,19 @@ Concrnt サーバーは、HTTP POST リクエストを受け付けるエンド�
 
 owner 部から所属サーバへの解決は、CIP-0で定義される名前解決 (Entity documentの `domain`) によって行う。
 
-サーバーは、自身がコミット対象の管理者でないリクエストを、HTTP 421 Misdirected Request で
-拒否しなければならない (MUST)。ただし以下は例外である。
+サーバーがコミットに対して実行する処理は、Documentの種別と自身の管理範囲によって決まる。
+1つのコミットが複数のサーバーにそれぞれ異なる処理を要求しうる点に注意すること。
 
-* Ack/unack Document: `author` と `associate` のownerのいずれか一方を管理していれば受理する (CIP-10 §3)。
-* 配布 (CIP-7) によるReference Documentの代理コミット、および削除の伝搬 (CIP-4 §6):
-  配布先リソースのownerを管理するサーバーが受理する。
+* コミット対象のownerを管理していれば、対象本体の保存・削除を行う。
+* `distributes` の配布先を管理していれば、Reference Documentの生成 (CIP-7 §4.1) や
+  削除の伝搬の適用 (CIP-4 §6.1) を行う。
+* Ack/unackは `author` と `associate` のownerのいずれか一方でも管理していれば受理する (CIP-10 §3)。
+* 該当する処理を実行した場合、対応するイベント (CIP-11) を自身の購読者へ発行する。
+
+自身の管理範囲に該当する処理が1つもないコミットについて、サーバーは
+HTTP 421 Misdirected Request で拒否してもよく (MAY)、何も適用せず
+no-opとして成功を返してもよい (MAY)。参考実装は後者 (スルー) を採用する。
+何も適用しなかった場合、そのコミットをコミットログに記録してはならない (MUST NOT、§3.4)。
 
 また、権威・認可の対象となるフィールド (`key`・`associate`・削除対象・`distributes` の各エントリ) の
 owner部に、エイリアス形式 (`@<FQDN>`、CIP-0 §7.2) を使用してはならない (MUST NOT)。

@@ -49,8 +49,10 @@ Associationとは状態モデル・データモデルの完全に異なる独立
 サーバーは、`author` と `associate` のownerの**いずれか一方でも**自身の管理下にある場合、
 そのAck Documentを受理し状態を保存しなければならない (MUST)。
 これはCIP-3 §3.1のコミット対象導出 (associate owner側のみ) に対する例外である。
-`author` と `associate` のownerの**いずれも**管理していないサーバーは、
-HTTP 421 Misdirected Request で拒否しなければならない (MUST)。
+`author` と `associate` のownerの**いずれも**管理していないサーバーの挙動は
+CIP-3 §3.1の一般規則に従う: 421 Misdirected Request で拒否してもよく (MAY)、
+no-opとして成功を返してもよい (MAY)。参考実装は、署名が有効であれば
+`associate` のownerの所属サーバーへDocumentを中継する。
 
 ## 4. 状態モデル
 
