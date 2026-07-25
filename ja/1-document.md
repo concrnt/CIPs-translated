@@ -1,20 +1,16 @@
-# CIP-1 Concrnt Document System
+# CIP-1: Concrnt Document System
 
 ## 0. Abstract
 
 本ドキュメントでは、Concrnt エコシステム内で用いられる Concrnt Document の構造と意味について定義する。
-
-Concrnt Document Systemは署名により操作が証明された、jsonドキュメントのための階層型データベースである。
+Concrnt Document System は、署名により操作が証明された、JSON ドキュメントのための階層型データベースである。
 
 ## 1. Status of This Memo
 
 このドキュメントは Concrnt Document フォーマットの仕様を定義する。
-
-Concrnt プロジェクトにより公開されるバージョン付き仕様であり、
-実装者およびプロトコル設計者を対象とする。
+Concrnt プロジェクトにより公開されるバージョン付き仕様であり、実装者およびプロトコル設計者を対象とする。
 
 本仕様はドラフトであり、後方互換性のない変更が行われる可能性がある。
-実装者は CIP-番号とバージョンを確認の上、適宜追従すること。
 
 ## 2. 用語 (Terminology)
 
@@ -25,23 +21,31 @@ BCP 14 [RFC2119] [RFC8174] にしたがって解釈される。
 > RECOMMENDED, NOT RECOMMENDED, MAY, OPTIONAL
 
 ### CDID (Concrnt Document ID)
-CDIDは、Concrnt Document を一意に識別するためのIDである。
-time-based CDID(Documentの作成日時と内容のハッシュから生成される)と、
-hash-based CDID(内容のハッシュのみから生成される)の2種類が存在する(6章参照)。
+
+Concrnt Document を一意に識別するための ID。time-based CDID (Document の作成日時と内容のハッシュから
+生成される) と、hash-based CDID (内容のハッシュのみから生成される) の 2 種類が存在する (§6)。
+
+### 権威サーバー (authoritative server)
+
+あるリソースについて、その owner (エンティティの場合は所属サーバー、FQDN / CSID の場合はそのサーバー
+自身) としてリソースを管理するサーバー。
 
 ## 3. 位置づけとスコープ
 
 CIP-1 は以下のみを扱う。
 
-* Concrnt Document の JSON 構造
-* 各フィールドの意味と制約
+* Concrnt Document の JSON 構造、各フィールドの意味と制約
 * CDID の生成方法
 * Concrnt Signed Document の構造と proof の検証方法
+
+本 CIP のうち、§4〜§6 (Document 構造・CDID)、§7.2 (`concrnt-ecrecover-direct`)、§7.5 (`none`) は
+Concrnt の必須コアである (CIP-0 §4.1)。§7.3 / §7.4 の proof type は拡張 CIP (CIP-13 / CIP-6) が
+定義するものであり、それらを実装しない検証者は該当 proof の検証を失敗として扱う (§7.1)。
 
 ## 4. Concrnt Document
 
 Concrnt Document は、JSON オブジェクトとして表現される不変のレコードであり、概念的には次のような型を持つ。
-MIMEタイプは `application/concrnt.document+json` である。
+MIME タイプは `application/concrnt.document+json` である。
 
 ```json
 {
@@ -58,52 +62,59 @@ MIMEタイプは `application/concrnt.document+json` である。
 ```
 
 * `value` の中身や構造は `schema` や上位の CIP によって定義される。
-* 上位のCIPによって、追加のフィールドが定義されることがある。
+* 上位の CIP によって、追加のフィールドが定義されることがある。
+
+Document および Signed Document (§7) の各 JSON オブジェクトは、妥当な UTF-8 の JSON でなければならず、
+重複するメンバ名を含んではならない (MUST NOT)。サーバーはパース時に重複メンバを検出した場合、
+その Document を拒否しなければならない (MUST)。重複メンバの解釈はパーサ依存であり、
+同一の署名済みバイト列がサーバー間で異なる意味に解釈されることを防ぐためである。
 
 ### 4.1 Document のサイズ上限
 
 Document の JSON シリアライズ (署名対象となる文字列そのもの) は、UTF-8 表現で
 **32768 バイト (32 KiB)** を超えてはならない (MUST NOT)。
-サーバは、これを超える Document のコミット (CIP-3) を拒否しなければならない (MUST)。
+サーバーは、これを超える Document を、あらゆる取り込み経路において拒否しなければならない (MUST)。
 
-Concrnt Document は投稿・プロフィール・ポリシーといった構造化メタデータを保持するための
-ものであり、大きなデータの格納には適さない。画像・動画・長文コンテンツなどの大きなデータは
-blob としてストレージに格納し、Document からは `ccfs://` URI (CIP-0) で参照すること。
+Concrnt Document は投稿・プロフィール・ポリシーといった構造化メタデータを保持するためのものであり、
+大きなデータの格納には適さない。画像・動画・長文コンテンツなどの大きなデータは blob として
+ストレージに格納し、Document からは `ccfs://` URI (CIP-0) で参照すること。
 
 ## 5. フィールド定義
 
 ### 5.1 `kind` (string, required)
 
 Document の操作種別を表すディスクリミネータ。サーバーは `kind` の値に基づいて Document の処理を分岐する。
-未知の `kind` を持つ Document は拒否されなければならない (MUST)。
 
-現在定義されている値は以下の通り。
+`kind` の語彙はレジストリとして拡張可能であり、現在は以下が定義されている。
 
 | kind | 意味 | 定義 |
 |---|---|---|
-| `entity` | エンティティ文書 (サーバ所属の宣言) | CIP-0 |
+| `entity` | エンティティ文書 (サーバー所属の宣言) | CIP-0 |
 | `record` | 一般のレコード | CIP-1 (本章) |
 | `association` | 他 Document への関連付け | CIP-9 |
 | `delete` | Document の削除 | CIP-4 |
 | `ack` | エンティティ間の承認 | CIP-10 |
 | `unack` | 承認の取消 | CIP-10 |
 
+未知の `kind`、および受信サーバーが実装していない拡張 CIP の `kind` を持つ Document は、
+拒否されなければならない (MUST)。
+
 ### 5.2 `key` (string, optional)
 
-Document に付与される cckv URI (CIP-0 参照)。
+Document に付与される cckv URI (CIP-0 §7.2。key 部の文字数・`*` 禁止等の制約もそこで規定される)。
 
 * `key` は `cckv://<owner>/<path>` 形式の CCURI でなければならない (MUST)。
-  サーバーは `key` の owner 部から、その Document を管理するエンティティを導出する。
+  サーバーは `key` の owner 部から、その Document を管理する名前空間を導出する。
 * `key` が省略された場合、その Document は CDID (ccfs URI) でのみ参照可能である。
-* 同一の`key`をもつ文書が複数存在する場合、最新の`createdAt`を持つ文書が優先される(MUST)。
-
+* 同一の `key` を持つ Document が複数コミットされた場合の新旧判定・保存規則は、
+  CIP-3 §3.4 の accept-if-newer に従う。
 
 ### 5.3 `schema` (string, optional)
 
 `value` の構造を定義するスキーマの識別子。
 
-* URL（`https://schema.concrnt.net/...` など）として表現される。
-* URLは解決可能なエンドポイントであり、JSON Schema形式で型が定義されているべきである (SHOULD)。
+* URL (`https://schema.concrnt.net/...` など) として表現される。
+* URL は解決可能なエンドポイントであり、JSON Schema 形式で型が定義されているべきである (SHOULD)。
 * アプリケーションは `schema` に基づいて `value` の検証・パースを行ってもよい (MAY)。
 * サーバーは `schema` の解決可能性や JSON Schema としての妥当性を検証しない。
 
@@ -120,53 +131,53 @@ Document が表現する実データ。
 
 * `author` は CIP-0 で定義された CCID (`con1...`) でなければならない (MUST)。
 
-
 ### 5.6 `createdAt` (string, required)
 
-Document が作成された時刻。
+Document が作成された時刻。RFC3339 形式の UTC 時刻文字列でなければならない (MUST)。
+CDID の導出 (§6.2) がこの値に依存するため、次の正規形に従う。
 
-* MUST: RFC3339 形式の UTC 時刻文字列（例: `"2025-11-23T12:34:56Z"`）。
-* サーバは、受理可能な `createdAt` の範囲を制限する。リファレンス実装の既定値は以下の通り。
-  * 現在時刻より **7日** より古い Document は拒否される (backdate window)。
-  * 現在時刻より **12時間** より未来の Document は拒否される (クロックスキュー許容)。
-* この時刻境界はコミットログによる重複排除 (CIP-3 参照) と組み合わさることで、
-  削除済み Document のリプレイに対する恒久的な防御を構成する。
-* サーバ運用者は、自身の管理経路 (マイグレーション・インポート等) において過去方向の制限を
-  緩和してもよい (MAY)。その経路・条件は実装定義であり、本仕様のスコープ外である。
+* 日付と時刻の区切りは大文字 `T`、UTC 指定は大文字 `Z` を用いる。
+  数値オフセット表記 (`+00:00` 等) を用いてはならない (MUST NOT)。
+* 小数秒は 3 桁 (ミリ秒) まで含めてもよい (MAY)。
+* サーバーは、正規形に従わない `createdAt` を持つ Document を拒否しなければならない (MUST)。
 
+サーバーが受理可能な `createdAt` の時刻範囲 (未来スキュー・backdate window) は CIP-3 §3.4 で規定される。
 
 ### 5.7 `onUpdate` (string, optional)
 
-同一 `key` の Document が新しい Document で上書きされたときの、旧 Document の扱いを指定する。
+この Document 自身が、同一 `key` のより新しい Document で上書きされたときの扱いを宣言する。
 
-* `"retain"` (デフォルト): 旧 Document は保持される。
-* `"forget"`: 旧 Document は削除され、そのコミットログは GC 候補としてマークされる。
+* `"retain"` (デフォルト): 旧 Document は保持され、引き続き CDID (ccfs URI) で参照可能である。
+* `"forget"`: 旧 Document は破棄され、以後参照できない。
 
 頻繁に上書きされるが履歴を残す必要のない Document (プレゼンス情報など) に `"forget"` を指定することで、
-ストレージの肥大化を防ぐことができる。
+ストレージの肥大化を防ぐことができる。`"forget"` による破棄を行う場合も、コミットログの保持期間は
+CIP-3 §3.4 の下限に従わなければならない (MUST)。
 
 ## 6. CDID の生成
 
-CDID には time-based と hash-based の2種類が存在する。
+CDID には time-based と hash-based の 2 種類が存在する。
 
 ### 6.1 Base32 エンコーディング
 
-いずれの CDID も、以下のテーブルを使った Base32 エンコード (パディングなし) で文字列表現される。
+いずれの CDID も、以下のテーブルを使った Base32 エンコードで文字列表現される。
+エンコードは RFC 4648 §6 の手順のアルファベットを本テーブルに置き換えて適用し、
+パディング文字を付さない (MUST)。
 
 ```text
 "0123456789abcdefghjkmnpqrstuvwyz"
 ```
 
-(`i`, `l`, `o`, `x` を除外した32文字)
+(`i`, `l`, `o`, `x` を除外した 32 文字)
 
 このテーブルは Crockford Base32 (`i`, `l`, `o`, `u` を除外) とは異なり、`u` の代わりに **`x` を除外**する。
-`x` は CDID のタイプを表す接頭辞文字として予約されているためである (§6.3 参照)。
+`x` は CDID のタイプを表す接頭辞文字として予約されているためである (§6.3)。
 エンコード出力に `x` が現れないことにより、先頭が `x` である文字列は曖昧さなく
 hash-based CDID として識別できる。
 
 ### 6.2 time-based CDID
 
-16バイトの値であり、次の構造を持つ。
+16 バイトの値であり、次の構造を持つ。
 
 ```text
  <- 6bytes -> <-    10 bytes    ->
@@ -175,9 +186,9 @@ hash-based CDID として識別できる。
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-* `hash` は Document の JSON シリアライズを Keccak256 でハッシュ化したものの先頭10バイト。
-* `timestamp` は Document の `createdAt` フィールドの UNIX タイムスタンプ（ミリ秒単位）を
-  ビッグエンディアンの6バイトで表現したもの。
+* `hash` は Document の JSON シリアライズを Keccak256 でハッシュ化したものの先頭 10 バイト。
+* `timestamp` は Document の `createdAt` の UNIX タイムスタンプ (ミリ秒単位。ミリ秒未満は切り捨てる)
+  をビッグエンディアンの 6 バイトで表現したもの。
 
 これを Base32 エンコードした 26 文字の文字列が time-based CDID となる。
 
@@ -193,7 +204,7 @@ time-based CDID は時刻が先頭に来るため、文字列比較がそのま�
 
 時刻成分を持たない Document (内容のみで同一性が決まるリソース) には hash-based CDID を使用する。
 
-* 対象バイト列を Keccak256 でハッシュ化したものの先頭15バイトを Base32 エンコードし、
+* 対象バイト列を Keccak256 でハッシュ化したものの先頭 15 バイトを Base32 エンコードし、
   先頭に `x` を付与した 25 文字の文字列となる。
 * 先頭が `x` であることをもって hash-based CDID と識別する。
   `x` は Base32 テーブル (§6.1) から除外された予約文字であり、エンコード出力には決して現れないため、
@@ -201,9 +212,8 @@ time-based CDID は時刻が先頭に来るため、文字列比較がそのま�
 
 ## 7. Concrnt Signed Document
 
-Documentの発行を証明する必要がある場合、これに署名を付与することができる。
-署名付き文書は次の形式を持つ。
-MIMEタイプは `application/concrnt.signed-document+json` である。
+Document の発行を証明する必要がある場合、これに署名を付与することができる。
+署名付き文書は次の形式を持つ。MIME タイプは `application/concrnt.signed-document+json` である。
 
 ```json
 {
@@ -223,12 +233,12 @@ MIMEタイプは `application/concrnt.signed-document+json` である。
 * `document`
   署名対象の Document の JSON 文字列。
 * `proof`
-  署名情報を含むオブジェクト (7.1 参照)。
+  署名情報を含むオブジェクト (§7.1)。
 * `cckv` / `ccfs`
   この Document を指す CCURI。サーバーがレスポンスに付与する情報フィールドであり、署名対象ではない。
 * `references`
-  proof の検証に必要な関連 Document を URI をキーとしてインライン同梱するためのマップ。
-  検証時の利用可否は proof type ごとに異なる (7.2〜7.5 参照)。
+  proof の検証や配送先での処理に必要な関連 Document を、URI をキーとしてインライン同梱するためのマップ。
+  検証時の利用可否は proof type ごとに異なる (§7.2〜§7.5)。
 
 署名や CDID 生成に用いる JSON は、署名者が生成した文字列をそのまま使い、追加の正規化処理は行わない。
 
@@ -243,58 +253,67 @@ MIMEタイプは `application/concrnt.signed-document+json` である。
 }
 ```
 
-proof の `type` として以下の4種が定義される。
+proof の `type` はレジストリとして拡張可能であり、現在は以下の 4 種が定義されている。
 
 | type | 概要 | 定義 |
 |---|---|---|
-| `concrnt-ecrecover-direct` | author の秘密鍵による直接署名 | 7.2 (本章) |
-| `concrnt-ecrecover-subkey` | サブキーによる委譲署名 | 7.3 (詳細は CIP-13) |
-| `document-reference` | 参照元 Document の存在による証明 | 7.4 (詳細は CIP-7) |
-| `none` | 無署名 | 7.5 |
+| `concrnt-ecrecover-direct` | author の秘密鍵による直接署名 | §7.2 (本章) |
+| `concrnt-ecrecover-subkey` | サブキーによる委譲署名 | CIP-13 |
+| `document-reference` | 参照元 Document の存在による証明 | CIP-6 |
+| `none` | 無署名 | §7.5 |
+
+未知の proof type、および検証者が実装していない拡張 CIP の proof type を持つ Signed Document の検証は、
+失敗として扱わなければならない (MUST)。
 
 ### 7.2 concrnt-ecrecover-direct
 
 CCID 所有者の秘密鍵で直接署名する方式。`signature` フィールドが必須である (MUST)。
 
-署名方法:
-* ハッシュ関数: Keccak256
-* 署名形式: secp256k1 ECDSA。(r, s, v) の順で連結した65バイトを16進エンコードする。
-
-検証方法:
-* ECRECOVER による公開鍵復元 → author の CCID と一致するか確認。
+* 署名方法: `document` の文字列を Keccak256 でハッシュ化し、secp256k1 ECDSA 署名を行う。
+  (r, s, v) の順で連結した 65 バイトを16進エンコードする (v の値域は CIP-0 §8.2)。
+* 検証方法: ECRECOVER による公開鍵復元 → 導出したアドレスが author の CCID と一致するか確認する。
 
 ### 7.3 concrnt-ecrecover-subkey
 
-エンティティが有効化したサブキーの秘密鍵で署名する方式。詳細は CIP-13 で定義される。
+エンティティが有効化したサブキーの秘密鍵で署名する方式。`signature` および `key` フィールドが
+必須である (MUST)。`key` にはサブキーの Enact Document を指す cckv URI を指定する。
 
-* `signature` および `key` フィールドが必須である (MUST)。
-  `key` にはサブキーの enact 文書を指す cckv URI を指定する。
-* 検証時、enact 文書は**必ず authoritative なサーバーから取得しなければならない (MUST)**。
-  `references` にインライン同梱された enact 文書を信用してはならない (MUST NOT)。
-  これは、失効済み (削除済み) の enact 文書を同梱してリプレイする攻撃を防ぐためである。
-* enact 文書の `author` と、署名対象 Document の `author` が一致することを確認しなければならない (MUST)。
+検証手順は CIP-13 §6 に従わなければならない (MUST)。特に、Enact Document を `references` の
+インライン同梱から取得してはならず (MUST NOT)、失効済み (Revoked Subkey Document で上書きされた)
+サブキーについては CIP-13 §4.1 の有効期間の検証を行わなければならない (MUST)。
 
 ### 7.4 document-reference
 
-参照元 Document の存在をもって、自動生成された Reference Document (CIP-6/CIP-7) の
-正当性を証明する方式。
+参照元 Document の存在をもって、自動生成された Reference Document (CIP-6 / CIP-7) の正当性を
+証明する方式。`href` フィールドが必須である (MUST)。
 
-* `href` フィールドが必須である (MUST)。
-* この proof type は `schema` が reference.json である Document に対してのみ有効である (MUST)。
-* Document の `value.href` と proof の `href` が一致することを確認しなければならない (MUST)。
-* 参照先 Document は `references` のインライン同梱を優先して解決してよい (MAY)。
-  同梱された参照先はそれ自体の proof 検証を再帰的に通過し、かつ `author` が本 Document の
-  `author` と一致しなければならない (MUST)。
-* 参照先 Document の同一性 (cckv key または導出 CDID) が `href` と一致することを
-  確認しなければならない (MUST)。詳細な手順は CIP-6 §5.1 を参照。これにより、正しく署名されたインライン参照は
-  author 自身による自己証明となり、参照先のオリジンサーバーが到達不能な場合
-  (マイグレーション中の import 等) でもコミットの検証可能性が保たれる。
+この proof type は `schema` が `https://schema.concrnt.net/reference.json` と完全一致する Document に
+対してのみ有効であり (MUST)、検証手順 (href との同一性バインディングを含む) は CIP-6 §5.1 に
+従わなければならない (MUST)。
 
 ### 7.5 none
 
 署名を持たない proof。検証は常に失敗しなければならない (MUST)。
-
 通常のコミット経路で none proof を受理してはならない (MUST NOT)。
-サーバー運用者が自身の管理経路 (マイグレーション・import 等、CIP-2 §6 のサービスアカウントで
-認証されるもの) において署名検証をスキップして Document を投入するかどうかは実装定義であり、
-本仕様のスコープ外である。
+サーバー運用者が自身の管理経路 (CIP-2 §6) において署名検証をスキップして Document を投入するか
+どうかは実装定義であり、本仕様のスコープ外である。
+
+## 8. Security Considerations
+
+* time-based CDID の内容バインディングは Keccak256 の先頭 10 バイト (80 ビット) であり、
+  同一 `createdAt` を自己申告できる作成者自身による誕生日衝突 (約 2^40 計算) は現実的な脅威である。
+  サーバーはコミットログの重複判定時にバイト列一致の確認を行うことで緩和できる (CIP-3 §3.4)。
+* 重複 JSON メンバを含む Document の受理 (§4) は、署名の有効性を保ったままサーバー間で
+  異なる解釈を生む攻撃 (JSON smuggling) を許すため、拒否は省略してはならない。
+* proof の検証をスキップした Document を保存・配信してはならない。検証不能な proof type は
+  「検証失敗」であり「検証不要」ではない (§7.1)。
+
+## 9. References
+
+* RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
+* RFC 8174 – Clarifications to RFC 2119
+* RFC 3339 – Date and Time on the Internet: Timestamps
+* RFC 4648 – The Base16, Base32, and Base64 Data Encodings
+* RFC 8259 – The JavaScript Object Notation (JSON) Data Interchange Format
+* CIP-0 – Concrnt Core (CCID, CCURI)
+* CIP-3 – Commit (accept-if-newer, コミットログ)
