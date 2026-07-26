@@ -145,6 +145,12 @@ Commit エンドポイントは署名済み Document をそのまま受理する
   おいてその Document が以後のすべての更新に優先してしまう。
 * **過去時刻の拒否 (backdate window)**: `createdAt` が一定以上過去である Document を拒否する。
   参考実装の窓は 7 日間である。
+  例外として、`kind: "entity"` の Document には backdate window を適用してはならない (MUST NOT)。
+  Entity Document は長寿命の署名であり、フェデレーションでの解決・再コミットを通じて発行から
+  何年も経った同一 Document が恒常的に提示される。後述の accept-if-newer とコミットログの
+  重複排除により、古い Entity Document のリプレイは no-op となるため巻き戻しは成立しない。
+  また Entity Document の proof は `concrnt-ecrecover-direct` に限定される (CIP-0 §8.2) ため、
+  この免除が漏洩サブキーによるバックデート署名 (CIP-13 §8) の受理範囲を広げることはない。
 * **コミットログによる重複排除**: サーバーは、適用した Document の CDID を**コミットログ**として
   記録する。Commit 処理の冒頭で、受信した Document の CDID がすでにコミットログに存在する場合には、
   Document を再適用せず、no-op として成功を返す。

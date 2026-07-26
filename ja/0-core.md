@@ -241,6 +241,12 @@ Entity Document は JSON 文字列としてシリアライズされ、エンテ�
 検証には ECRECOVER アルゴリズムを使用し、署名から公開鍵を復元して §5.2 の手順でアドレスを導出し、
 CCID と照合する。
 
+Entity Document の proof は `concrnt-ecrecover-direct` でなければならない (MUST)。
+サブキー (CIP-13) や document-reference (CIP-6) による proof を持つ Entity Document を
+受理してはならない (MUST NOT)。所属の表明はアカウントレベルの操作であり、また Entity Document は
+backdate window の適用外である (CIP-3 §3.4) ため、サブキー署名を許すと、漏洩後に失効された
+サブキーによる過去日時への所属偽造 (CIP-13 §8) を時間で制限できなくなる。
+
 ### 8.3 エイリアスと DNS による所有権検証
 
 エンティティは `value.alias` に FQDN 形式の別名を設定できる。
