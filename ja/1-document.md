@@ -147,12 +147,17 @@ CDID の導出 (§6.2) がこの値に依存するため、次の正規形に従
 
 この Document 自身が、同一 `key` のより新しい Document で上書きされたときの扱いを宣言する。
 
-* `"retain"` (デフォルト): 旧 Document は保持され、引き続き CDID (ccfs URI) で参照可能である。
-* `"forget"`: 旧 Document は破棄され、以後参照できない。
+* `"forget"` (デフォルト): 旧 Document は破棄され、以後参照できない。
+* `"retain"`: 旧 Document は保持され、引き続き CDID (ccfs URI) で参照可能である。
 
-頻繁に上書きされるが履歴を残す必要のない Document (プレゼンス情報など) に `"forget"` を指定することで、
-ストレージの肥大化を防ぐことができる。`"forget"` による破棄を行う場合も、コミットログの保持期間は
-CIP-3 §3.4 の下限に従わなければならない (MUST)。
+上書き後も履歴として残す必要のある Document に `"retain"` を指定する。省略時は `"forget"` であり、
+頻繁に上書きされる Document (プレゼンス情報など) がストレージを肥大化させることはない。
+`"forget"` による破棄を行う場合も、コミットログの保持期間は CIP-3 §3.4 の下限に
+従わなければならない (MUST)。
+
+`kind: "entity"` の Document には本フィールドは適用されない。Entity Document は `key` を持たず
+本節の上書き機構の外にあり、より新しい Entity Document で置き換えられた場合も、`onUpdate` の
+指定によらず旧 Document は常に保持される (CIP-0 §8.4)。
 
 ## 6. CDID の生成
 

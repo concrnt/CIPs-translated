@@ -275,6 +275,10 @@ Entity Document を保存し、提供してもよい (MAY)。
 同一エンティティ (同一 CCID) に対して複数の Entity Document を受け取った場合の新旧判定・保存規則は、
 CIP-3 §3.4 の accept-if-newer に従う (より新しいもののみを保存し、古い・同一の再送は no-op 成功とする)。
 
+置き換えられた古い Entity Document は、Document 内の `onUpdate` (CIP-1 §5.7) の指定によらず
+破棄してはならず (MUST NOT)、引き続き CDID (ccfs URI) で参照可能でなければならない (MUST)。
+所属の変遷は過去の Document の検証・監査に関わるため、ストレージ最適化 (forget) の対象としない。
+
 ### 8.5 未知のエンティティの解決
 
 Concrnt にはグローバルなディレクトリが存在しないため、エンティティの所属は
