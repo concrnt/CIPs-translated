@@ -58,7 +58,7 @@ owner 部に対するエイリアス・リゾルバヒントの禁止は CIP-3 �
 ```json
 {
   "kind": "record",
-  "key": "<配布先CCURI>/<元DocumentのCDID>",
+  "key": "<配布先CCURI>/<hrefのhash-based CDID>",
   "schema": "https://schema.concrnt.net/reference.json",
   "value": {
     "href": "<元DocumentのCCURI>"
@@ -68,19 +68,21 @@ owner 部に対するエイリアス・リゾルバヒントの禁止は CIP-3 �
 }
 ```
 
-* `key` は配布先 CCURI の子キーとして、元 Document の CDID (CIP-1) をパスセグメントに用いる。
 * `href` には元 Document を指す CCURI を指定する。`kind: "record"` の場合はその cckv キー
   (record は常に key を持つ。CIP-3 §3.1)、`kind: "association"` 等の key を持たない Document の
   場合はその ccfs URI となる。
+* `key` は配布先 CCURI の子キーとして、`href` と同一の文字列を hash-based CDID (CIP-1 §6.3)
+  でエンコードしたものをパスセグメントに用いる。
 
 この Reference Document は、CIP-6 §5 で定義される `document-reference` proof を付与した
 Signed Document として構成される。このとき `references` フィールド (CIP-1) には、受信側が追加の
 問い合わせなしに検証を完了できるよう、元 Document の Signed Document および author の
 Entity Document を同梱するべきである (SHOULD)。
 
-同一キーの Document が上書き (CIP-3 §3.4 accept-if-newer) された場合も新しい CDID の参照行が
-生成されるが、旧版の参照行は新版と同一の `value.href` を持つため、フィード上は同一エントリとして
-扱われる (CIP-8 §6 の重複排除)。サーバーは上書き時に旧版の参照行を削除してもよい (MAY)。
+key セグメントは `href` のみから導出され、元 Document の内容や `createdAt` に依存しない。
+したがって同一キーの Document が上書き (CIP-3 §3.4 accept-if-newer) された場合、新版に対して
+生成される Reference Document は旧版のものと同一のキーを持ち、accept-if-newer により旧版の
+参照行を置換する — 上書きによって参照行が増殖することはない。
 
 ### 4.2 配布の実行
 
