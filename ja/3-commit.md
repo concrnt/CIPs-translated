@@ -67,7 +67,14 @@ key を持たない record はコミット対象の管理サーバーを導出�
 * `distributes` の配布先を管理していれば、Reference Document の生成 (CIP-7 §4.1) や
   削除の伝搬の適用 (CIP-4 §6.1) を行う。
 * ack / unack は `author` と `associate` の owner のいずれか一方でも管理していれば受理する (CIP-10 §3)。
+  ただしコミットログとして記録するのは author を管理するサーバーのみであり、associate owner の
+  管理サーバーは代わりに acked / unacked ミラーを自身のコミットとして記録する (CIP-10 §5)。
 * 該当する処理を実行した場合、対応するイベント (CIP-11) を自身の購読者へ発行する。
+
+なお、記録されるコミットの所有者 (リポジトリダンプへの帰属・退会時 GC の単位) は、
+上記の導出により kind ごとに正確に 1 エンティティ (または該当なし) に定まる
+(record = key の owner、association = 対象の owner、ack / unack = author、
+acked / unacked = associate の owner、entity = author、delete = 実行者)。
 
 自身の管理範囲に該当する処理が 1 つもないコミットについて、サーバーは
 HTTP 421 Misdirected Request で拒否してもよく (MAY)、何も適用せず no-op として成功を

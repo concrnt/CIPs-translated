@@ -95,6 +95,8 @@ Document の操作種別を表すディスクリミネータ。サーバーは `
 | `delete` | Document の削除 | CIP-4 |
 | `ack` | エンティティ間の承認 | CIP-10 |
 | `unack` | 承認の取消 | CIP-10 |
+| `acked` | 承認のサーバー生成ミラー (被承認側の保持) | CIP-10 |
+| `unacked` | 承認取消のサーバー生成ミラー (被承認側の保持) | CIP-10 |
 
 未知の `kind`、および受信サーバーが実装していない拡張 CIP の `kind` を持つ Document は、
 拒否されなければならない (MUST)。
@@ -252,19 +254,22 @@ Document の発行を証明する必要がある場合、これに署名を付�
 ```json
 {
   "type": "<proof type>",
-  "signature": "<hex>",   // optional (type依存)
-  "href": "<uri>",        // optional (type依存)
-  "key": "<uri>"          // optional (type依存)
+  "signature": "<hex>",     // optional (type依存)
+  "href": "<uri>",          // optional (type依存)
+  "key": "<uri>",           // optional (type依存)
+  "document": "<string>",   // optional (type依存)
+  "proof": { ... }          // optional (type依存)
 }
 ```
 
-proof の `type` はレジストリとして拡張可能であり、現在は以下の 4 種が定義されている。
+proof の `type` はレジストリとして拡張可能であり、現在は以下の 5 種が定義されている。
 
 | type | 概要 | 定義 |
 |---|---|---|
 | `concrnt-ecrecover-direct` | author の秘密鍵による直接署名 | §7.2 (本章) |
 | `concrnt-ecrecover-subkey` | サブキーによる委譲署名 | CIP-13 |
 | `document-reference` | 参照元 Document の存在による証明 | CIP-6 |
+| `ack-reference` | 埋め込まれた署名済み ack/unack による証明 | CIP-10 |
 | `none` | 無署名 | §7.5 |
 
 未知の proof type、および検証者が実装していない拡張 CIP の proof type を持つ Signed Document の検証は、
@@ -295,6 +300,15 @@ CCID 所有者の秘密鍵で直接署名する方式。`signature` フィール
 この proof type は `schema` が `https://schema.concrnt.net/reference.json` と完全一致する Document に
 対してのみ有効であり (MUST)、検証手順 (href との同一性バインディングを含む) は CIP-6 §5.1 に
 従わなければならない (MUST)。
+
+### 7.4.1 ack-reference
+
+サーバーが生成する acked/unacked ミラー Document (CIP-10) の正当性を、proof に丸ごと埋め込まれた
+元の署名済み ack/unack Document をもって証明する方式。`document` (元 Document の文字列) と
+`proof` (元 Document の proof オブジェクト) が必須である (MUST)。
+
+この proof type は `kind` が `acked` / `unacked` の Document に対してのみ有効であり (MUST)、
+検証手順は CIP-10 の Acked Mirror 節に従わなければならない (MUST)。
 
 ### 7.5 none
 

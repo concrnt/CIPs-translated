@@ -35,7 +35,7 @@ CIP-0 のサービスディスカバリにおいて `net.concrnt.core.query` エ
   "csid": "ccs1<bech32-encoded-address>",
   "endpoints": {
     "net.concrnt.core.resolve": "/resource/{uri}",
-    "net.concrnt.core.query": "/query{?prefix,schema,since,until,limit,order,parent}"
+    "net.concrnt.core.query": "/query{?prefix,schema,since,until,limit,order,parent,author}"
   }
 }
 ```
@@ -51,6 +51,13 @@ Query エンドポイントは、以下のクエリパラメータを受け付�
 - `parent` — 検索対象の親リソースを CCURI で指定する文字列。指定したリソースの直下の要素
   (キー階層の直接の子) が検索対象となる。
 - `schema` — スキーマを指定する文字列。(任意)
+- `author` — Document の作成者 CCID を指定する文字列。Document の `author` フィールドが
+  一致するリソースのみを返す。Reference Document (CIP-6) については、Document Reference
+  proof の検証が Reference の `author` と参照先 Document の `author` の一致を強制するため、
+  配布 Reference (CIP-7) の行は元 Document の author で絞り込める。author の秘密鍵で直接
+  署名された Reference は、その署名者 (Reference の作成者) が author となる。
+  キーの空間オーナーによる絞り込みは本パラメータの対象外である。prefix / parent が
+  指し示すキー空間のオーナーは結果全体で常に一定であり、フィルタとして意味を持たない。(任意)
 - `since` — `createdAt >= since` のリソースのみを返すための RFC3339 形式の日時文字列。境界を含む。(任意)
 - `until` — `createdAt <= until` のリソースのみを返すための RFC3339 形式の日時文字列。境界を含む。(任意)
 - `limit` — 返されるリソースの最大数を指定する整数。上限は実装定義であり、上限を超える値が
