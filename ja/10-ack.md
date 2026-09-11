@@ -49,17 +49,12 @@ Association とは状態モデル・データモデルの完全に異なる独�
 * `schema` は必須であり (REQUIRED)、その値を変化させることで様々な種類の承認 (フォロー等) を表現できる。
 * `key` に値が入っていてはならない (MUST NOT)。
 
-クライアントは、Ack Document を、自身 (`author`) の所属サーバー、または `associate` の owner の
-所属サーバーの Commit エンドポイント (CIP-3) へ送信する。
-サーバーは、`author` と `associate` の owner の**いずれか一方でも**自身の管理下にある場合、
-その Ack Document を受理し状態を保存しなければならない (MUST)。
-これは CIP-3 §3.1 のコミット対象導出 (associate owner 側のみ) に対する例外である。
-
-`author` と `associate` の owner の**いずれも**管理していないサーバーの挙動は
-CIP-3 §3.1 の一般規則に従う: 421 Misdirected Request で拒否してもよく (MAY)、
-no-op として成功を返してもよい (MAY)。no-op とする場合、あわせて `associate` の owner の
-所属サーバーへ Document を中継してもよい (MAY)。参考実装は、署名が有効であれば no-op 成功としつつ
-中継を行う。
+クライアントは、Ack Document を、自身 (`author`) の所属サーバーの Commit エンドポイント (CIP-3) へ
+送信する。Ack / unack Document のコミット対象は `author` の所属サーバーであり (CIP-3 §3.1)、
+`associate` の owner 側への伝達は §5 の acked / unacked Document によって行われる。
+`author` を管理していないサーバーの挙動は CIP-3 §3.1 の一般規則に従う:
+421 Misdirected Request で拒否してもよく (MAY)、no-op として成功を返してもよい (MAY)。
+raw の Ack / unack Document を他サーバーへ中継してはならない (MUST NOT)。
 
 ## 4. 状態モデル
 
@@ -73,45 +68,54 @@ Ack は、(送信元 `author`, 送信先 `associate` の owner, `schema`) の 3 
 同一の 3 つ組に対する再コミットは、状態と対応する Document を上書きする (upsert)。
 これにより ack → unack → ack のような状態遷移を表現でき、操作は冪等である。
 
-ただし、上書きは無条件であってはならない。サーバーは、保存済みの Ack / unack Document と
-新規 Document の CDID (`createdAt` 順の比較が可能) を比較し、**新しい遷移である場合のみ**
-状態を変更しなければならない (MUST)。古いまたは同一の遷移は、状態の変更・代理送信 (§5)・配布の
-いずれも行わない副作用なしの no-op として成功応答する (MUST)。
+ただし、上書きは無条件であってはならない。サーバーは、保存済みの Document と
+新規 Document の `createdAt` を比較し、新規 Document の `createdAt` が**厳密に新しい場合のみ**
+状態を変更しなければならない (MUST)。`createdAt` が古いまたは同一の遷移は、状態の変更・
+acked / unacked の送信 (§5)・配布のいずれも行わない副作用なしの no-op として成功応答する (MUST)。
 これにより、捕捉された古い ack / unack Document の再送による状態の巻き戻しは成立しない。
+比較キーは `createdAt` のみであり、CDID の内容ハッシュ部を順序付けに用いてはならない (MUST NOT)。
+`createdAt` は acked / unacked Document (§5.2) にそのまま継承されるため、送信元・送信先の両サーバーは
+同一のキーで同一の判定を行う。
 
 ## 5. Ack の配布
 
 Ack の**状態** (§4) は、送信元エンティティと送信先エンティティの両方のサーバーで
-保持されなければならない (MUST)。送信先エンティティが他サーバーの管理下にある場合、
-送信元のサーバーは Ack / unack Document を送信先エンティティを管理するサーバーの
-Commit エンドポイントへ代理で送信しなければならない (MUST)。
-送信先の所属サーバーは、代理送信された Ack / unack Document を、署名が有効である限り
-受理し状態へ適用しなければならない (MUST)。
-
-ただし、Document の**保持形態**は両側で異なる:
+保持されなければならない (MUST)。ただし、両側が保持する **Document は異なる**:
 
 * **送信元 (author) の所属サーバー**は、Ack / unack Document をコミットログとして記録する。
   このコミットの所有者は author のみである。
-* **送信先 (associate owner) の所属サーバー**は、受理した Ack / unack Document 自体を
-  コミットログとして記録**してはならない** (MUST NOT)。代わりに、そこから導出した
-  acked / unacked ミラー Document (§5.2) を、associate owner を所有者とする自身のコミットとして
-  記録する (SHOULD。被承認側のリポジトリ可搬性のため)。
-  author と associate owner が同一サーバーに所属する場合は、Ack コミット (author 所有) と
-  ミラーコミット (associate owner 所有) の両方がそのサーバーに記録される。
+* **送信先 (associate owner) の所属サーバー**は、Ack / unack Document から導出された
+  acked / unacked Document (§5.2) をコミットログとして記録する。このコミットの所有者は
+  associate owner のみである。raw の Ack / unack Document 自体を記録**してはならない** (MUST NOT)。
+
+送信元の所属サーバーは、Ack / unack Document を受理したとき、そこから acked / unacked Document を
+導出し、`associate` の owner の所属サーバーの Commit エンドポイントへ送信しなければならない (MUST)。
+これは CIP-7 の配布が元 Document ではなく Reference Document を配布先へ送るのと同じ構造であり、
+raw の Ack / unack Document は author の所属サーバーを離れない (リポジトリダンプ→リプレイ経由の
+移動を除く)。**送信先が自サーバー自身であっても同じ経路で処理する** (author と associate owner が
+同一サーバーに所属する場合、Ack コミット (author 所有) と acked コミット (associate owner 所有) の
+両方がそのサーバーに記録される)。これにより送信先が自サーバーか他サーバーかで処理が分岐しない。
+
+送信先の所属サーバーは、受信した acked / unacked Document を、§5.2 の検証に合格する限り
+受理し状態へ適用しなければならない (MUST)。
+
+リポジトリダンプの再生 (サーバー運用者の管理経路によるコミット) では acked / unacked Document を
+送信しない。CIP-7 の Reference 配布と同様、再生は自サーバーの保持を復元するだけであり、
+送信先側の保持はその側のダンプに含まれている。
 
 これにより、あらゆるコミットの所有者は正確に 1 エンティティに定まり、退会時の GC が
-特殊ケースなしに機能する。送信先サーバーでの重複排除・順序制御は、コミットログではなく
-§4 の CDID 比較が担う (古いまたは同一の Ack はコミットログを残さない no-op — CIP-3 の
-「何も適用しなかったコミットは記録してはならない」規則と整合する)。
+特殊ケースなしに機能する。重複排除・順序制御は §4 の `createdAt` 比較が担う (古いまたは同一の遷移は
+コミットログを残さない no-op — CIP-3 の「何も適用しなかったコミットは記録してはならない」規則と
+整合する)。
 
-代理送信の再試行は、CIP-7 §4.2.1 の規則に従う: 再試行では最初に受理したものと同一の
-Signed Document を再送しなければならず (MUST)、指数バックオフによる再試行を行うべきである (SHOULD)。
-再送は §4 の新旧比較により冪等である。
+acked / unacked Document の送信の再試行は、CIP-7 §4.2.1 の規則に従う: 再試行では最初に生成したものと
+同一の Signed Document を再送しなければならず (MUST。導出は決定的なので同一 CDID になる)、
+指数バックオフによる再試行を行うべきである (SHOULD)。再送は §4 の新旧比較により冪等である。
 
 ### 5.1 認可
 
 Ack / unack のコミットは、CIP-12 のポリシースタック評価の**対象外**である。
-サーバーが行う検査は、Signed Document の署名検証、§3 の経路検査 (author / associate owner の管理)、
+サーバーが行う検査は、Signed Document の署名検証、§3 の経路検査 (author の管理)、
 および相互ブロック関係の検査 (CIP-3 §4) のみである。
 すなわち、有効な署名を持つ author は、経路とブロックの制約の範囲内で自身の Ack 状態を自由に制御できる。
 CIP-12 のアクション語彙には Ack / unack に対応するアクションが存在しない (将来の拡張とする)。
@@ -119,44 +123,48 @@ CIP-12 のアクション語彙には Ack / unack に対応するアクション
 また、Ack Document は `distributes` フィールド (CIP-7) を持つことができ、
 その場合 CIP-7 の規定に従い Reference Document が配布される。
 
-### 5.2 Acked / Unacked Mirror Document
+### 5.2 Acked / Unacked Document
 
-acked / unacked ミラーは、受理した Ack / unack から associate owner の管理サーバーが
-自動生成する、被承認側の保持を表す Document である。ミラーは連合ワイヤに流通せず、
-生成したサーバー自身のコミットとしてのみ記録される (リポジトリダンプ→リプレイ経由の移動を除く)。
+acked / unacked Document は、受理した Ack / unack から author の管理サーバーが自動生成する、
+被承認側の保持を表す Document である。§5 のとおり associate owner の管理サーバーへ送信され、
+そのサーバー自身のコミットとして記録される。
 
-**導出規則 (MUST)**: ミラー Document は、元の Ack / unack Document をパースし、
+**導出規則 (MUST)**: acked / unacked Document は、元の Ack / unack Document をパースし、
 `kind` のみを対応する値 (`ack` → `acked`, `unack` → `unacked`) に置換して、
 CIP-1 の正準フィールド集合で再シリアライズしたものである。他のフィールド
 (`schema`, `value`, `author`, `associate`, `createdAt` 等) は元 Document と同一でなければ
-ならない (MUST)。導出は決定的であり、同一の Ack からは常に同一のミラー (同一の CDID) が
-得られる — 再試行・遡及生成は既存コミットの重複として no-op になる。
+ならない (MUST)。導出は決定的であり、同一の Ack からは常に同一の Document (同一の CDID) が
+得られる — 再送・遡及生成は既存コミットの重複として no-op になる。
 
-**proof (MUST)**: ミラーの proof は `ack-reference` type (CIP-1 §7.4.1) であり、
+**proof (MUST)**: proof は `document-direct` type (CIP-1 §7.4.1) であり、
 `document` / `proof` フィールドに元の Ack / unack の Signed Document を丸ごと埋め込む。
-これによりミラーは外部解決なしに自己完結で検証できる (リポジトリリプレイを含む)。
+これにより acked / unacked Document は外部解決なしに自己完結で検証できる (リポジトリリプレイを含む)。
 
 **検証規則 (MUST)**: 検証者は (1) 埋め込まれた Signed Document を再帰的に検証し
 (埋め込み Document の proof は `concrnt-ecrecover-direct` または `concrnt-ecrecover-subkey` で
-なければならない)、(2) ミラー Document が埋め込み Document からの正準導出とバイト列一致する
+なければならない)、(2) acked / unacked Document が埋め込み Document からの正準導出とバイト列一致する
 ことを確認する。この 1 つの比較が kind の対応 (acked→ack / unacked→unack) と全フィールドの
-一致を同時に束縛する。第三者が有効な Ack から正規のミラーを構築・再送しても、結果は正規生成と
-同一の冪等な適用にしかならず、無害である。
+一致を同時に束縛する。第三者が有効な Ack から正規の acked / unacked Document を構築・送信しても、
+結果は正規生成と同一の冪等な適用にしかならず、無害である。`kind` が `acked` / `unacked` の
+Document は `document-direct` 以外の proof で受理してはならない (MUST NOT。author が直接署名した
+`acked` は無効である)。
 
-**適用規則 (MUST)**: ミラーのコミットは、埋め込まれた元 Ack の CDID を用いて §4 の状態遷移を
-適用する。状態の新旧比較の唯一の基準は常に**元の Ack / unack の CDID**であり、ミラー自身の
-CDID を比較に用いてはならない (MUST NOT)。associate owner を管理しないサーバーは、
-ミラーのコミットを受理してはならない (MUST NOT)。
+**適用規則 (MUST)**: acked / unacked のコミットは、§4 の規則に従い自身の `createdAt`
+(元 Ack / unack から継承した値) を保存済み状態の `createdAt` と比較して状態遷移を適用する。
+associate owner を管理しないサーバーの挙動は CIP-3 §3.1 の一般規則に従う (何も適用せず no-op として
+成功を返してよく (MAY)、421 で拒否してもよい (MAY))。いずれにせよ状態を保存してはならない (MUST NOT)。
 
-**検査の免除**: ミラーの `createdAt` は元 Ack から継承されるため、コミット時の
-backdate 検査 (CIP-3 §3.4) の適用外である (時間的正当性は元 Ack の受理時に検査済み)。
+**検査の免除**: acked / unacked の `createdAt` は元 Ack から継承されるため、コミット時の
+backdate 検査 (CIP-3 §3.4) の適用外である (時間的正当性は元 Ack の受理時に検査済み。
+配送の再試行遅延やリポジトリリプレイで backdate window を超えうる)。
 また §5.1 と同様にポリシー評価の対象外であり、相互ブロック検査も再適用しない
 (元 Ack の受理時に検査済みであり、事後のブロックが被承認側自身の保持のリプレイを
-妨げてはならない)。
+妨げてはならない)。author の Entity が解決できない場合 (author のサーバー消滅後のリプレイ等) も
+受理する (埋め込み Document の署名が author の身元を保証する)。
 
-**同時刻の遷移について**: ack と unack が同一の `createdAt` を持つ場合、§4 の比較は
-CDID の内容ハッシュ部で決着する。これは author 自身が意図的に作り出せる状況に限られ、
-両側のサーバーは同一の勝者に収束する。
+**同時刻の遷移について**: 同一の 3 つ組に対して同一の `createdAt` を持つ ack と unack が存在する場合、
+§4 の比較により後から届いた方は no-op になる。これは author 自身が意図的に作り出せる状況に限られ、
+仕様上の順序は定義しない (両側のサーバーで結果が異なりうることを許容する)。
 
 ## 6. Ack の取得
 
@@ -179,7 +187,8 @@ query パラメータとして以下をサポートする。
 * `from`: 送信元エンティティの CCID で絞り込む。
 * `to`: 送信先エンティティの CCID で絞り込む。
 * `schema`: schema で絞り込む。
-* `from` と `to` の少なくとも一方は指定しなければならない (MUST)。
+* `from` と `to` は**いずれか一方のみ**を指定しなければならない (MUST)。両方を指定した、
+  またはどちらも指定しないリクエストは 400 Bad Request で拒否する (MUST)。
 
 サーバーは、これらに加えて CIP-5 §3.1 と同様の `limit` / `since` / `until` / `order`
 パラメータを受け付けなければならない (MUST)。デフォルトの順序は `desc` である。
@@ -188,9 +197,9 @@ query パラメータとして以下をサポートする。
 (`{"items": [...], "prev": ..., "next": ...}` 形式。ソートキーは Ack Document の `createdAt`)。
 
 各アイテムとして返す Signed Document は、サーバーが保持している側の Document である:
-author を管理するサーバーは元の Ack Document (`kind: "ack"`) を、associate owner のみを
-管理するサーバーはその acked ミラー (`kind: "acked"`、§5.2) を返す。ミラーは `kind` 以外の
-全フィールドが元 Ack と同一であるため、クライアントから見える情報は等価である。
+`from` で絞り込んだ場合は author 側の保持である Ack Document (`kind: "ack"`) を、
+`to` で絞り込んだ場合は associate owner 側の保持である acked Document (`kind: "acked"`、§5.2) を返す。
+acked は `kind` 以外の全フィールドが元 Ack と同一であるため、クライアントから見える情報は等価である。
 
 **acknowledge-counts**: 同じパラメータを受け付け、有効な Ack の schema ごとの件数マップを返す。
 
@@ -204,7 +213,7 @@ author を管理するサーバーは元の Ack Document (`kind: "ack"`) を、a
   サーバーは、組あたりの schema 数および単位時間あたりの Ack コミット数に上限を
   課すべきである (SHOULD)。上限超過は HTTP 429 で拒否してよい (MAY)。
   §5 の受理義務 (MUST) は、これらの資源保護のための拒否を妨げない。
-* 代理送信の恒久的な失敗により、送信元と送信先の Ack 状態は不整合になりうる。
+* acked / unacked の送信の恒久的な失敗により、送信元と送信先の Ack 状態は不整合になりうる。
   ConcrntCall による認可 (CIP-12) は問い合わせ先サーバーの状態に依存するため、
   ポリシー作成者は resolver の選択に注意すること。
 
@@ -212,6 +221,6 @@ author を管理するサーバーは元の Ack Document (`kind: "ack"`) を、a
 
 * RFC 2119 – Key words for use in RFCs to Indicate Requirement Levels
 * RFC 8174 – Clarifications to RFC 2119
-* CIP-7 – Distribution (配送の再試行)
+* CIP-7 – Distribution (配送の構造・再試行)
 * CIP-9 – Association
 * CIP-12 – Policy (ConcrntCall)

@@ -51,7 +51,9 @@ HTTP POST リクエストのボディとして送信する。
 * `key` フィールドが存在する場合: `key` の owner 部が示す名前空間の権威サーバー
   (owner が CCID の場合はその Entity の所属サーバー、FQDN / CSID の場合はそのサーバー自身)。
 * `associate` フィールドが存在する場合 (CIP-9): `associate` の owner 部が示す Entity の所属サーバー。
-  ただし `kind` が `ack` / `unack` の場合は CIP-10 §3 の例外 (author 側でも受理) がある。
+  ただし `kind` が `ack` / `unack` の場合は例外で、コミット対象は `author` の所属サーバーである
+  (CIP-10 §3)。`associate` の owner の所属サーバーへは、author のサーバーが導出した
+  `acked` / `unacked` Document がコミットされる (CIP-10 §5)。
 * `kind` が `delete` の場合 (CIP-4): `value` の削除対象 CCURI の owner 部が示す名前空間の権威サーバー。
 * `kind` が `entity` の場合 (CIP-0): `value.domain` が示すサーバー (所属先サーバー)。
 
@@ -66,15 +68,16 @@ key を持たない record はコミット対象の管理サーバーを導出�
 * コミット対象の owner を管理していれば、対象本体の保存・削除を行う。
 * `distributes` の配布先を管理していれば、Reference Document の生成 (CIP-7 §4.1) や
   削除の伝搬の適用 (CIP-4 §6.1) を行う。
-* ack / unack は `author` と `associate` の owner のいずれか一方でも管理していれば受理する (CIP-10 §3)。
-  ただしコミットログとして記録するのは author を管理するサーバーのみであり、associate owner の
-  管理サーバーは代わりに acked / unacked ミラーを自身のコミットとして記録する (CIP-10 §5)。
+* ack / unack は `author` を管理していれば受理し、自身のコミットとして記録したうえで、
+  導出した acked / unacked Document を `associate` の owner の所属サーバー (自身を含む) へ
+  コミットする (CIP-10 §5)。acked / unacked は `associate` の owner を管理していれば受理し、
+  associate owner のコミットとして記録する (CIP-10 §5.2)。
 * 該当する処理を実行した場合、対応するイベント (CIP-11) を自身の購読者へ発行する。
 
 なお、記録されるコミットの所有者 (リポジトリダンプへの帰属・退会時 GC の単位) は、
 上記の導出により kind ごとに正確に 1 エンティティ (または該当なし) に定まる
 (record = key の owner、association = 対象の owner、ack / unack = author、
-acked / unacked = associate の owner、entity = author、delete = 実行者)。
+acked / unacked = associate の owner、entity = author、delete = 削除対象の owner)。
 
 自身の管理範囲に該当する処理が 1 つもないコミットについて、サーバーは
 HTTP 421 Misdirected Request で拒否してもよく (MAY)、何も適用せず no-op として成功を
@@ -126,15 +129,17 @@ Commit エンドポイントは、CIP-1 §5.1 で定義される `kind` レジ�
 
 * `key` を持つ Document (record): `key` の owner 部 (CCID に限らず、FQDN / CSID 形式の場合もそのまま)。
 * association: `associate` の owner 部。
-* ack / unack: `associate` が指す対象 Entity の解決済み CCID。
+* ack / unack: `author` (author の所属サーバーが保持する Document であるため。CIP-10 §5)。
+* acked / unacked: `associate` が指す対象 Entity の解決済み CCID。
 
-すなわち ccfs identity の owner は**名前空間の所有者**であり、Document の `author` (署名者) ではない。
-author と名前空間所有者が異なる Document (他者の名前空間への書き込み等) では両者が乖離する点に注意。
+すなわち ccfs identity の owner は**その Document を保持するサーバーの名前空間の所有者**であり、
+一般には Document の `author` (署名者) ではない。author と名前空間所有者が異なる Document
+(他者の名前空間への書き込み等) では両者が乖離する点に注意。
 
 kind ごとの返却内容は以下の通りである。
 
 * `record`: 送信された Signed Document に `cckv` と `ccfs` を付与したもの。
-* `association` / `ack` / `unack`: 送信された Signed Document に `ccfs` を付与したもの。
+* `association` / `ack` / `unack` / `acked` / `unacked`: 送信された Signed Document に `ccfs` を付与したもの。
 * `entity`: 送信された Signed Document そのもの。
 * `delete`: 削除された対象の Signed Document。
 
@@ -170,7 +175,8 @@ Commit エンドポイントは署名済み Document をそのまま受理する
 CDID は Document の内容全体から導出されるため、重複排除により同一 Document の再送
 (クライアントのリトライ、連合経路の再配送、ダンプの再インポート) は安全な冪等操作となる。
 同時に、これがリプレイガードでもある。削除済み・上書き済みの Document の CDID も、
-削除を行った `kind: "delete"` の Document 自身の CDID もコミットログに残り続けるため、
+削除を行った `kind: "delete"` の Document 自身の CDID もコミットログに残る (保持期間後の GC は
+CIP-4 §5) ため、
 捕捉された Document を再送しても適用されず、同じキー (または範囲) に後から作成された Document を
 過去の削除コマンドで削除させることもできない。保持期間を上記の下限より短くすると、
 未来スキュー上限付近の `createdAt` を持つ Document が、エントリ破棄の時点でまだ backdate window の
@@ -185,11 +191,12 @@ CDID は Document の内容全体から導出されるため、重複排除に�
 
 また、`kind: "entity"` のコミット、および `key` を持つ Document による既存キーの上書きは、
 **accept-if-newer** 方式で処理されなければならない (MUST)。
-サーバーは既存の Document と新規 Document の CDID (`createdAt` が先頭に符号化されるため
-時刻順の比較が可能であり、同時刻は内容ハッシュによる決定的なタイブレークとなる) を比較し、
-新しい場合のみ上書きする。古いまたは同一の Document の再送はエラーとせず、保存もコミットログの
-記録も行わない no-op として成功を返す (MUST)。これにより、捕捉された旧バージョンの再送による
-保存済み Document のロールバックは成立しない。
+サーバーは既存の Document と新規 Document の `createdAt` を比較し、新規 Document の `createdAt` が
+**厳密に新しい場合のみ**上書きする。`createdAt` が古いまたは同一の Document の再送はエラーとせず、
+保存もコミットログの記録も行わない no-op として成功を返す (MUST)。比較キーは `createdAt` のみであり、
+CDID の内容ハッシュ部を順序付けに用いてはならない (MUST NOT。同一 `createdAt` の異なる Document は
+先に受理された方が残る)。これにより、捕捉された旧バージョンの再送による
+保存済み Document のロールバックは成立しない。Ack の状態遷移も同じ規則に従う (CIP-10 §4)。
 
 サーバー運用者が自身の管理経路 (マイグレーション・インポート等) において
 本節の時刻境界を緩和することは妨げない。その経路・条件は実装定義であり、本仕様のスコープ外である
