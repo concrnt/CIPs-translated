@@ -84,7 +84,7 @@ FQDN または CSID に限られる。一方、Concrnt の外部にあるサー�
                                               Request Object を取得
                                            4. RP のオリジンを検証し同意画面を表示
                                            5. ユーザーが承認 (master key で署名)
-                                    <---   6. ID Token を client_id へ送信
+                                    <---   6. ID Token を redirect_uri へ送信
   7. ID Token を検証しセッションを確立
 ```
 
@@ -93,37 +93,48 @@ FQDN または CSID に限られる。一方、Concrnt の外部にあるサー�
 
 ## 5. Authorization Request
 
-### 5.1 RP の識別子 (client_id)
+### 5.1 RP の識別子 (オリジン)
 
-RP は `client_id` によって識別される。`client_id` は RP が応答を受け取る HTTPS URL であり、
-SIOPv2 の「`client_id` equals `redirect_uri`」方式に相当する。事前登録は存在しない。
+RP は HTTPS のオリジンによって識別される。事前登録は存在せず、`client_id` のような別個の識別子も持たない。
 
-* `client_id` は `https` スキームの絶対 URL でなければならない (MUST)。フラグメントを含んではならない
-  (MUST NOT)。
-* `client_id` のオリジン (scheme, host, port) を **RP のオリジン**と呼ぶ。
+* `request_uri` (§5.2) のオリジン (scheme, host, port) を **RP のオリジン**と呼ぶ。
   Authenticator がユーザーに提示する RP の身元は、このオリジンの host である (§6)。
-* ID Token の `aud` には `client_id` の文字列をそのまま用いる (§7.2)。
+* 応答の送り先 `redirect_uri` (§5.3) は RP のオリジンと同一オリジンでなければならない (MUST)。
+* ID Token の `aud` には RP のオリジンを `scheme://host[:port]` の文字列 (末尾スラッシュ無し) で用いる (§7.2)。
 
 ### 5.2 Authorization Request URI
 
 RP は Authorization Request を次の URI として表現し、QR コードまたはリンクとして提示する。
 
 ```text
-concrnt-auth://?client_id=<url-encoded client_id>&request_uri=<url-encoded request_uri>
+concrnt-auth://<response_mode>/<host>/<path>[?query]
 ```
 
-* `client_id` (REQUIRED) — §5.1。
-* `request_uri` (REQUIRED) — Request Object (§5.3) を取得する HTTPS URL。
-  `request_uri` のオリジンは `client_id` のオリジンと一致しなければならない (MUST)。
+これは `request_uri = https://<host>/<path>[?query]` と同値である。
+
+* `<response_mode>` (REQUIRED) — 応答の配送方法 (§8)。`direct_post` または `fragment`。
+  Authenticator はこれ以外の値を持つ URI を拒否しなければならない (MUST)。将来の CIP は
+  新しい値 (例: `signal`) をここに追加できる。
+* `<host>/<path>[?query]` (REQUIRED) — Request Object (§5.3) を取得する `request_uri` から `https://` を
+  除いたもの。`<host>` は RP のオリジンの host (§5.1) であり、userinfo を含んではならない (MUST NOT)。
+  `<path>` は空であってはならない (MUST NOT)。
   `request_uri` は推測困難な一意の値を含み、一回限りであるべきである (SHOULD)。
 
-Authorization Request URI には上記 2 つ以外のパラメータを含めてはならない (MUST NOT)。
-要求の内容はすべて Request Object に置く。これは QR コードを小さく保ち、
-要求内容を RP のオリジンから取得したものに限定するためである。
+```text
+concrnt-auth://direct_post/example.com/auth/concrnt/request/atuQzACZAhdDWdWSKoLkInh7injQzhX80bKtkkJjcQMfsefydw
+concrnt-auth://fragment/example.com/auth/concrnt/request/atuQzAGZAhdDWdWSKoLkInh7injQ6udlSnGGls5kc82mnJ2jaA
+```
+
+Authorization Request URI には、`request_uri` の一部であるクエリを除き、クエリやフラグメントで
+他のパラメータを足してはならない (MUST NOT)。要求の内容はすべて Request Object に置く。
+これは QR コードを小さく保ち、要求内容を RP のオリジンから取得したものに限定するためである。
+
+応答方式を URI 自体に載せるのは、Authenticator が URI の開き方 (アプリ内のスキャナーで読んだか、
+OS から deep link として渡されたか) から応答方式を推定できないためである (§10.1)。
 
 Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed HTTPS URL
-(Universal Links / App Links) を登録している場合、同じクエリを持つその URL を同一の
-Authorization Request URI として受理してもよい (MAY)。
+(Universal Links / App Links) を登録している場合、同じ `<response_mode>/<host>/<path>` を
+パスに持つその URL を同一の Authorization Request URI として受理してもよい (MAY)。
 
 ### 5.3 Request Object
 
@@ -131,14 +142,14 @@ Authorization Request URI として受理してもよい (MAY)。
 
 ```json
 {
-  "client_id": "https://example.com/auth/concrnt/callback",
+  "redirect_uri": "https://example.com/auth/concrnt/callback",
   "response_type": "id_token",
   "response_mode": "direct_post",
   "scope": "openid profile",
   "nonce": "n-0S6_WzA2Mj",
   "state": "af0ifjsldkj",
   "exp": 1763901596,
-  "display_code": "48-21",
+  "display_code": "🐧🌽🍊🧩☀️🪁",
   "client_metadata": {
     "client_name": "Example Service",
     "logo_uri": "https://example.com/logo.png",
@@ -148,9 +159,12 @@ Authorization Request URI として受理してもよい (MAY)。
 }
 ```
 
-* `client_id` (REQUIRED) — Authorization Request URI の `client_id` と一致しなければならない (MUST)。
+* `redirect_uri` (REQUIRED) — 応答の送り先。`direct_post` では POST 先、`fragment` ではブラウザで開く URL (§8)。
+  `https` スキームの絶対 URL でなければならず (MUST)、フラグメントを含んではならない (MUST NOT)。
+  オリジンは `request_uri` のオリジン (= RP のオリジン、§5.1) と一致しなければならない (MUST)。
 * `response_type` (REQUIRED) — 常に `"id_token"`。
 * `response_mode` (REQUIRED) — `"direct_post"` (§8.1) または `"fragment"` (§8.2)。
+  Authorization Request URI の `<response_mode>` と一致しなければならない (MUST)。
 * `scope` (REQUIRED) — スペース区切り。`openid` を含まなければならない (MUST)。
   本 CIP は `openid` と `profile` を定義する (§7.3)。他の CIP が追加の scope を定義できる
   (CIP-18 の `concrnt_service_key` 等)。Authenticator は未知の scope を無視する (MUST)。
@@ -159,8 +173,9 @@ Authorization Request URI として受理してもよい (MAY)。
 * `exp` (REQUIRED) — Request Object の失効時刻。UNIX タイムスタンプ (秒) の数値。
   Authenticator は失効した要求を拒否しなければならない (MUST)。
   RP は短い有効期間 (数分程度) を設定するべきである (SHOULD。§10.1)。
-* `display_code` (OPTIONAL) — RP が QR コードの傍らに表示する短い照合コード。
-  Authenticator は同意画面に同じ値を表示する (§6)。
+* `display_code` — RP が QR コードの傍らに表示する短い照合コード。`response_mode` が `direct_post` のとき
+  REQUIRED であり、Authenticator は同意画面に同じ値を表示する (§6)。`fragment` のときは含めない
+  (応答が同じ端末のブラウザに戻るため、見比べる画面が無い)。
 * `client_metadata` (OPTIONAL) — RP の表示用メタデータ。メンバ名は OpenID Connect Dynamic Client
   Registration の Client Metadata に従う。本 CIP が参照するのは `client_name`, `logo_uri`,
   `policy_uri`, `tos_uri` である。
@@ -169,14 +184,15 @@ Authorization Request URI として受理してもよい (MAY)。
 
 Authenticator は Request Object を次の手順で取得・検証しなければならない (MUST)。
 
-1. Authorization Request URI の `client_id` が §5.1 の要件を満たし、`request_uri` のオリジンが
-   `client_id` のオリジンと一致することを確認する。
+1. Authorization Request URI が §5.2 の構文に従い、`<response_mode>` が既知の値であることを確認する。
+   `request_uri` を復元し、そのオリジンを RP のオリジンとする。
 2. `request_uri` に HTTPS で GET を行う。リダイレクトに追従してはならない (MUST NOT)。
    TLS 検証を省略してはならない (MUST NOT)。
-3. 取得した Request Object の `client_id` が URI の `client_id` と一致することを確認する。
-4. `response_type`, `response_mode`, `scope`, `nonce`, `exp` の必須性と値を確認し、
-   `exp` を過ぎていないことを確認する。
-5. `scope` に `openid` が含まれることを確認する。
+3. 取得した Request Object の `response_mode` が URI の `<response_mode>` と一致することを確認する。
+4. `redirect_uri` が `https` の絶対 URL であり、そのオリジンが RP のオリジンと一致することを確認する。
+5. `response_type`, `scope`, `nonce`, `exp` の必須性と値を確認し、`exp` を過ぎていないことを確認する。
+   `scope` に `openid` が含まれることを確認する。
+6. `response_mode` が `direct_post` の場合、`display_code` が存在することを確認する。
 
 いずれかに失敗した場合、Authenticator は要求を拒否し、ユーザーにその旨を表示する。
 失敗した要求に対して ID Token を発行してはならない (MUST NOT)。
@@ -190,10 +206,19 @@ Authenticator は、ID Token に署名する前に、ユーザーに次を提示
   信頼の根拠にならない。
 * 署名に用いるエンティティの CCID (複数アカウントを扱う Authenticator の場合は選択肢)。
 * `scope` に応じて RP へ渡される情報の種類 (§7.3)。
-* `display_code` が存在する場合はその値。ユーザーが RP の画面上の表示と照合できるようにする。
+
+`response_mode` が `direct_post` の場合、Authenticator はさらに次を、URI の開き方 (QR コードの
+スキャン、deep link のいずれか) に関わらず提示しなければならない (MUST)。
+
+* `display_code` の値と、RP の画面に同じ値が表示されていることを確認するよう促す文言。
+* これが**別の端末の画面へのログイン**であり、ユーザー自身がその QR コードやリンクを開いたのでなければ
+  拒否するよう促す警告。
+
+これらは §10.1 の攻撃に対する緩和策である。`fragment` の場合は応答が同じ端末のブラウザに戻るため、
+これらの提示は要求しない。
 
 Authenticator は、そのエンティティが当該 RP のオリジンに対して初めてログインする場合、
-その旨を明示的に警告するべきである (SHOULD)。これは §10.1 の攻撃に対する緩和策である。
+その旨を明示的に警告するべきである (SHOULD)。これも §10.1 の攻撃に対する緩和策である。
 
 ID Token への署名はエンティティ本体の秘密鍵で行う (§7)。Authenticator が master key の使用に
 ユーザー認証 (生体認証・PIN 等) を要求する実装である場合、その認証をもって本節の承認操作と
@@ -222,7 +247,7 @@ ID Token への署名はエンティティ本体の秘密鍵で行う (§7)。Au
 {
   "iss": "con1t0tey8uxhkqkd4wcp4hd4jedt7f0vfhk29xdd2",
   "sub": "con1t0tey8uxhkqkd4wcp4hd4jedt7f0vfhk29xdd2",
-  "aud": "https://example.com/auth/concrnt/callback",
+  "aud": "https://example.com",
   "nonce": "n-0S6_WzA2Mj",
   "iat": 1763901296,
   "exp": 1763901596,
@@ -237,7 +262,8 @@ ID Token への署名はエンティティ本体の秘密鍵で行う (§7)。Au
 * `sub` (REQUIRED) — エンティティの CCID。`iss` と同一でなければならない (MUST)。
   CIP-2 の auth token は `sub` が `"concrnt"` 固定であるため、Concrnt サーバーは本 ID Token を
   auth token として受理しない (§7.4)。
-* `aud` (REQUIRED) — Request Object の `client_id` (§5.1)。
+* `aud` (REQUIRED) — RP のオリジン (§5.1)。`scheme://host[:port]` の形式で、末尾にスラッシュを付けない
+  (WHATWG URL の origin のシリアライズと同じ)。
 * `nonce` (REQUIRED) — Request Object の `nonce`。
 * `iat` (REQUIRED) — 発行時刻。
 * `exp` (REQUIRED) — 失効時刻。ID Token はログイン操作の証明であり、短命でなければならない。
@@ -277,7 +303,7 @@ RP が認識しないクレームは無視しなければならない (MUST)。
 
 ID Token と CIP-2 の auth token は同じ `alg` と署名方式を共有するが、次の点で相互に流用できない。
 
-* ID Token の `aud` は RP の HTTPS URL であり、Concrnt サーバーの FQDN / CSID ではない。
+* ID Token の `aud` は RP の HTTPS オリジン (`https://…`) であり、Concrnt サーバーの FQDN / CSID ではない。
 * ID Token の `sub` は CCID であり、`"concrnt"` ではない。
 * ID Token の `iat` / `exp` は数値であり、文字列ではない。
 
@@ -288,7 +314,7 @@ CCID であることの確認 (§9 手順 4) により auth token を拒否す�
 
 ### 8.1 direct_post (cross-device)
 
-`response_mode` が `"direct_post"` の場合、Authenticator は `client_id` の URL に対して
+`response_mode` が `"direct_post"` の場合、Authenticator は Request Object の `redirect_uri` に対して
 `application/x-www-form-urlencoded` で HTTP POST を行う。
 
 ```text
@@ -315,7 +341,7 @@ RP は、この POST を受け取った時点で ID Token を検証 (§9) し、
 ### 8.2 fragment (same-device)
 
 `response_mode` が `"fragment"` の場合、Authenticator は応答パラメータを URL フラグメントに付与した
-`client_id` の URL をブラウザで開く。
+Request Object の `redirect_uri` をブラウザで開く。
 
 ```text
 https://example.com/auth/concrnt/callback#id_token=eyJhbGciOiJDT05DUk5UIi...&state=af0ifjsldkj
@@ -325,6 +351,8 @@ RP のフロントエンドはフラグメントから `id_token` を取り出�
 フラグメントは HTTP リクエストに含まれないため、サーバーログや Referer に ID Token が漏れない。
 
 同一端末フローでは、応答が要求を開始したブラウザに直接戻るため、§10.1 の攻撃は成立しない。
+RP は、開始したブラウザセッション以外から届いた `fragment` の応答を受理してはならない (MUST NOT。
+そのような応答は、他人に開かせたリンクの結果である)。
 スマートフォンのブラウザから RP を利用する場合、RP は cross-device ではなく本モードを
 用いるべきである (SHOULD)。
 
@@ -336,7 +364,7 @@ RP のフロントエンドはフラグメントから `id_token` を取り出�
 * `state` — Request Object の `state`。
 
 Request Object の検証失敗 (§5.4) の場合はエラー応答を返してはならない (MUST NOT)。
-検証されていない `client_id` への送信になるためである。
+検証されていない `redirect_uri` への送信になるためである。
 
 ## 9. RP による ID Token の検証
 
@@ -344,7 +372,7 @@ RP は ID Token を次の手順で検証しなければならない (MUST)。
 
 1. JWT として構文解析する。ヘッダーの `alg` が `"CONCRNT"`、`typ` が `"JWT"` であり、
    `kid` が存在しないことを確認する。
-2. `aud` が自身の `client_id` と一致することを確認する。
+2. `aud` が自身のオリジン (§5.1) と一致することを確認する。
 3. `nonce` が自身の発行した未使用の値と一致することを確認し、使用済みとして記録する。
 4. `sub` が `iss` と等しく、CIP-0 §5.2 の CCID (小文字の Bech32、HRP `con`) であることを確認する。
 5. 現在時刻が `exp` を過ぎていないこと、`iat` が妥当な範囲にあることを確認する。
@@ -368,11 +396,16 @@ QR コードを介した cross-device フローは、攻撃者が正規の RP �
 完全な防止策は存在しない。本仕様は次の緩和策を要求・推奨する。
 
 * 同意画面での RP オリジンの表示 (§6、MUST)。
+* `direct_post` での `display_code` の表示と「別の端末の画面へのログインである」旨の警告 (§6、MUST)。
 * Request Object の短い有効期間 (§5.3、SHOULD)。
 * 初めての RP へのログイン時の警告 (§6、SHOULD)。
-* `display_code` による照合 (§5.3、OPTIONAL)。
 * ログイン結果の取得をブラウザセッションの秘密に結び付けること (§8.1、MUST)。
 * 同一端末の場合は `fragment` モードを用いること (§8.2、SHOULD)。
+
+Authenticator が URI の開き方で応答方式を制限すること (例: deep link で届いた `direct_post` の要求を
+拒否する) は防御にならない。OS のカメラアプリで読み取った QR コードは deep link として Authenticator に
+届き、攻撃者に踏まされたリンクと区別できないためである。応答方式は URI の `<response_mode>` (§5.2) で
+明示し、`direct_post` であれば開き方に関わらず §6 の提示を行う。
 
 高い保証が必要な RP は、cross-device フローを用いず同一端末フローに限定するか、
 追加の近接確認などを独自に実装するべきである。
@@ -398,7 +431,7 @@ CCID が RP に渡されることを明示する (§6)。
 ### 10.5 `client_metadata` の信頼
 
 `client_name`, `logo_uri` 等は RP の自己申告である。Authenticator はこれらを RP のオリジン host と
-混同されない形で表示しなければならない (MUST)。`logo_uri` の画像は `client_id` と同一オリジンから
+混同されない形で表示しなければならない (MUST)。`logo_uri` の画像は RP のオリジンから
 のみ取得するべきである (SHOULD)。
 
 ## 11. References
