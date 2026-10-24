@@ -90,6 +90,9 @@ FQDN または CSID に限られる。一方、Concrnt の外部にあるサー�
 
 同一端末フロー (Authenticator と RP のブラウザが同じ端末にある場合) では、手順 2 の URI を
 リンクとして開き、手順 6 の応答はブラウザへのリダイレクトで返す (§8.2)。
+どちらのフローを用いるかは URI の `<response_mode>` (§5.2) で決まり、RP のブラウザ側が選ぶ。
+RP のバックエンドは応答方式を区別しない: 同じ Request Object を返し (§5.3)、受け口の役割の違い
+(§8.1 は預かる、§8.2 は提示者をログインさせる) だけで処理が決まる。
 
 ## 5. Authorization Request
 
@@ -114,7 +117,9 @@ concrnt-auth://<response_mode>/<host>/<path>[?query]
 
 * `<response_mode>` (REQUIRED) — 応答の配送方法 (§8)。`direct_post` または `fragment`。
   Authenticator はこれ以外の値を持つ URI を拒否しなければならない (MUST)。将来の CIP は
-  新しい値 (例: `signal`) をここに追加できる。
+  新しい値 (例: `signal`) をここに追加できる。応答方式が現れるのはこの URI だけであり、
+  Request Object (§5.3) には含まれない。同じ `request_uri` から `direct_post` 用と `fragment` 用の
+  URI を両方作ってよい (RP のブラウザ側が QR コードには `direct_post`、リンクには `fragment` を使う)。
 * `<host>/<path>[?query]` (REQUIRED) — Request Object (§5.3) を取得する `request_uri` から `https://` を
   除いたもの。`<host>` は RP のオリジンの host (§5.1) であり、userinfo を含んではならない (MUST NOT)。
   `<path>` は空であってはならない (MUST NOT)。
@@ -144,7 +149,6 @@ Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed 
 {
   "redirect_uri": "https://example.com/auth/concrnt/callback",
   "response_type": "id_token",
-  "response_mode": "direct_post",
   "scope": "openid profile",
   "nonce": "n-0S6_WzA2Mj",
   "state": "af0ifjsldkj",
@@ -163,8 +167,6 @@ Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed 
   `https` スキームの絶対 URL でなければならず (MUST)、フラグメントを含んではならない (MUST NOT)。
   オリジンは `request_uri` のオリジン (= RP のオリジン、§5.1) と一致しなければならない (MUST)。
 * `response_type` (REQUIRED) — 常に `"id_token"`。
-* `response_mode` (REQUIRED) — `"direct_post"` (§8.1) または `"fragment"` (§8.2)。
-  Authorization Request URI の `<response_mode>` と一致しなければならない (MUST)。
 * `scope` (REQUIRED) — スペース区切り。`openid` を含まなければならない (MUST)。
   本 CIP は `openid` と `profile` を定義する (§7.3)。他の CIP が追加の scope を定義できる
   (CIP-18 の `concrnt_service_key` 等)。Authenticator は未知の scope を無視する (MUST)。
@@ -173,9 +175,10 @@ Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed 
 * `exp` (REQUIRED) — Request Object の失効時刻。UNIX タイムスタンプ (秒) の数値。
   Authenticator は失効した要求を拒否しなければならない (MUST)。
   RP は短い有効期間 (数分程度) を設定するべきである (SHOULD。§10.1)。
-* `display_code` — RP が QR コードの傍らに表示する短い照合コード。`response_mode` が `direct_post` のとき
-  REQUIRED であり、Authenticator は同意画面に同じ値を表示する (§6)。`fragment` のときは含めない
-  (応答が同じ端末のブラウザに戻るため、見比べる画面が無い)。
+* `display_code` (REQUIRED) — RP が QR コードの傍らに表示する短い照合コード。Authenticator は
+  `<response_mode>` が `direct_post` のとき同意画面に同じ値を表示する (§6)。`fragment` では応答が
+  同じ端末のブラウザに戻り見比べる画面が無いので表示しないが、Request Object は応答方式に
+  依存しないため常に含める。
 * `client_metadata` (OPTIONAL) — RP の表示用メタデータ。メンバ名は OpenID Connect Dynamic Client
   Registration の Client Metadata に従う。本 CIP が参照するのは `client_name`, `logo_uri`,
   `policy_uri`, `tos_uri` である。
@@ -188,11 +191,9 @@ Authenticator は Request Object を次の手順で取得・検証しなけれ�
    `request_uri` を復元し、そのオリジンを RP のオリジンとする。
 2. `request_uri` に HTTPS で GET を行う。リダイレクトに追従してはならない (MUST NOT)。
    TLS 検証を省略してはならない (MUST NOT)。
-3. 取得した Request Object の `response_mode` が URI の `<response_mode>` と一致することを確認する。
-4. `redirect_uri` が `https` の絶対 URL であり、そのオリジンが RP のオリジンと一致することを確認する。
-5. `response_type`, `scope`, `nonce`, `exp` の必須性と値を確認し、`exp` を過ぎていないことを確認する。
-   `scope` に `openid` が含まれることを確認する。
-6. `response_mode` が `direct_post` の場合、`display_code` が存在することを確認する。
+3. `redirect_uri` が `https` の絶対 URL であり、そのオリジンが RP のオリジンと一致することを確認する。
+4. `response_type`, `scope`, `nonce`, `exp`, `display_code` の必須性と値を確認し、`exp` を過ぎていないことを
+   確認する。`scope` に `openid` が含まれることを確認する。
 
 いずれかに失敗した場合、Authenticator は要求を拒否し、ユーザーにその旨を表示する。
 失敗した要求に対して ID Token を発行してはならない (MUST NOT)。
@@ -207,15 +208,16 @@ Authenticator は、ID Token に署名する前に、ユーザーに次を提示
 * 署名に用いるエンティティの CCID (複数アカウントを扱う Authenticator の場合は選択肢)。
 * `scope` に応じて RP へ渡される情報の種類 (§7.3)。
 
-`response_mode` が `direct_post` の場合、Authenticator はさらに次を、URI の開き方 (QR コードの
+URI の `<response_mode>` が `direct_post` の場合、Authenticator はさらに次を、URI の開き方 (QR コードの
 スキャン、deep link のいずれか) に関わらず提示しなければならない (MUST)。
 
 * `display_code` の値と、RP の画面に同じ値が表示されていることを確認するよう促す文言。
 * これが**別の端末の画面へのログイン**であり、ユーザー自身がその QR コードやリンクを開いたのでなければ
   拒否するよう促す警告。
 
-これらは §10.1 の攻撃に対する緩和策である。`fragment` の場合は応答が同じ端末のブラウザに戻るため、
-これらの提示は要求しない。
+これらは §10.1 の攻撃に対する緩和策である。`fragment` の場合は応答が同じ端末のブラウザに戻り、
+その結果は提示したブラウザ自身のログインにしかならない (§8.2) ため、これらの提示は要求しない
+(`display_code` は Request Object に含まれるが表示しない)。
 
 Authenticator は、そのエンティティが当該 RP のオリジンに対して初めてログインする場合、
 その旨を明示的に警告するべきである (SHOULD)。これも §10.1 の攻撃に対する緩和策である。
@@ -312,9 +314,15 @@ CCID であることの確認 (§9 手順 4) により auth token を拒否す�
 
 ## 8. 応答の配送
 
+応答方式は Authorization Request URI の `<response_mode>` (§5.2) で決まる。両方式の応答は同じ
+パラメータを運ぶが、RP における意味が異なる: `direct_post` で届いた応答は**要求を開始したブラウザのために
+預かる**もの、`fragment` で届いた応答は**それを提示したブラウザ自身をログインさせる**ものである。
+RP はこの 2 つを別の受け口で扱い、互いに混ぜてはならない (MUST NOT)。この区別が §10.1 の攻撃に対する
+構造的な防御であり、RP が応答方式を推定したり開始ブラウザとの一致を照合したりする必要を無くす。
+
 ### 8.1 direct_post (cross-device)
 
-`response_mode` が `"direct_post"` の場合、Authenticator は Request Object の `redirect_uri` に対して
+`<response_mode>` が `direct_post` の場合、Authenticator は Request Object の `redirect_uri` に対して
 `application/x-www-form-urlencoded` で HTTP POST を行う。
 
 ```text
@@ -332,27 +340,31 @@ id_token=eyJhbGciOiJDT05DUk5UIi...&state=af0ifjsldkj
 Authenticator はこの POST でリダイレクトに追従してはならない (MUST NOT)。
 RP は受理した場合 HTTP 200 または 204 を返す。レスポンスボディは本仕様では定義しない。
 
-RP は、この POST を受け取った時点で ID Token を検証 (§9) し、**要求を生成したブラウザセッション**に
-結果を結び付ける。RP のブラウザ側は、要求生成時に発行されたセッション識別子
+RP は、この POST を受け取った時点で ID Token を検証 (§9) し、**要求を生成したブラウザセッション**のために
+結果を預かる。RP のブラウザ側は、要求生成時に発行されたセッション識別子
 (QR コードに含まれない秘密) を用いてポーリングまたはプッシュで結果を受け取る。
 `request_uri` や `nonce` など Authorization Request URI から導出できる値のみによって
 ログイン結果を取得できる設計にしてはならない (MUST NOT)。これらは QR コードを見た第三者にも既知である。
+RP はこの POST の送信者に対してセッションを確立してはならない (MUST NOT)。送信者は Authenticator であり、
+RP のブラウザではない。
 
 ### 8.2 fragment (same-device)
 
-`response_mode` が `"fragment"` の場合、Authenticator は応答パラメータを URL フラグメントに付与した
+`<response_mode>` が `fragment` の場合、Authenticator は応答パラメータを URL フラグメントに付与した
 Request Object の `redirect_uri` をブラウザで開く。
 
 ```text
 https://example.com/auth/concrnt/callback#id_token=eyJhbGciOiJDT05DUk5UIi...&state=af0ifjsldkj
 ```
 
-RP のフロントエンドはフラグメントから `id_token` を取り出してバックエンドへ送る。
-フラグメントは HTTP リクエストに含まれないため、サーバーログや Referer に ID Token が漏れない。
+RP のフロントエンドはフラグメントの内容をバックエンドへ送り、バックエンドは ID Token を検証 (§9) して
+**それを提示したブラウザ**に対してセッションを確立する。フラグメントは HTTP リクエストに含まれないため、
+サーバーログや Referer に ID Token が漏れない。
 
-同一端末フローでは、応答が要求を開始したブラウザに直接戻るため、§10.1 の攻撃は成立しない。
-RP は、開始したブラウザセッション以外から届いた `fragment` の応答を受理してはならない (MUST NOT。
-そのような応答は、他人に開かせたリンクの結果である)。
+この経路で届いた結果を、要求を開始したブラウザセッション (§8.1 の預かり先) に結び付けてはならない
+(MUST NOT)。開始したブラウザと提示したブラウザが別であるのは、他人に開かせたリンクの結果であり
+(§10.1)、その場合に起きるのは提示した本人が自分のアカウントでログインすることだけである。
+提示したブラウザが要求を開始したブラウザと同じである必要はなく、RP はそれを照合しなくてよい。
 スマートフォンのブラウザから RP を利用する場合、RP は cross-device ではなく本モードを
 用いるべきである (SHOULD)。
 
@@ -373,13 +385,18 @@ RP は ID Token を次の手順で検証しなければならない (MUST)。
 1. JWT として構文解析する。ヘッダーの `alg` が `"CONCRNT"`、`typ` が `"JWT"` であり、
    `kid` が存在しないことを確認する。
 2. `aud` が自身のオリジン (§5.1) と一致することを確認する。
-3. `nonce` が自身の発行した未使用の値と一致することを確認し、使用済みとして記録する。
+3. `nonce` が自身の発行した未使用の値と一致することを確認し、使用済みとして記録する (MUST)。
+   記録は少なくとも対応する Request Object の `exp` まで保持する。同じ要求から `direct_post` と
+   `fragment` の両方の URI を作った場合 (§5.2) も `nonce` は 1 つであり、どちらの経路で受理しても
+   以後はもう一方の経路でも受理しない。
 4. `sub` が `iss` と等しく、CIP-0 §5.2 の CCID (小文字の Bech32、HRP `con`) であることを確認する。
 5. 現在時刻が `exp` を過ぎていないこと、`iat` が妥当な範囲にあることを確認する。
 6. `base64url(header) + "." + base64url(payload)` を Keccak256 でハッシュ化し、署名から ECRECOVER で
    公開鍵を復元、CIP-0 §5.2 の手順でアドレスを導出し、`sub` の CCID と一致することを確認する。
 
-検証に成功した場合、RP はこの応答の送信者を `sub` のエンティティとして扱い、セッションを確立する。
+検証に成功した場合、RP は `sub` のエンティティとしてセッションを確立する。セッションを与える相手は
+応答の経路で決まる: `direct_post` では要求を開始したブラウザ (§8.1)、`fragment` では応答を提示した
+ブラウザ (§8.2) である。
 セッションは `sub` の CCID に結び付けなければならず (MUST)、プロフィールクレームのような
 変化しうる値に結び付けてはならない (MUST NOT)。
 
@@ -399,13 +416,16 @@ QR コードを介した cross-device フローは、攻撃者が正規の RP �
 * `direct_post` での `display_code` の表示と「別の端末の画面へのログインである」旨の警告 (§6、MUST)。
 * Request Object の短い有効期間 (§5.3、SHOULD)。
 * 初めての RP へのログイン時の警告 (§6、SHOULD)。
-* ログイン結果の取得をブラウザセッションの秘密に結び付けること (§8.1、MUST)。
+* `direct_post` のログイン結果の取得をブラウザセッションの秘密に結び付けること (§8.1、MUST)。
+* `fragment` の応答は提示したブラウザ自身のログインにしか使わず、開始したセッションに届けないこと (§8.2、MUST)。
+  これにより、他人に `fragment` のリンクを開かせても、攻撃者には何も届かない。
 * 同一端末の場合は `fragment` モードを用いること (§8.2、SHOULD)。
 
 Authenticator が URI の開き方で応答方式を制限すること (例: deep link で届いた `direct_post` の要求を
 拒否する) は防御にならない。OS のカメラアプリで読み取った QR コードは deep link として Authenticator に
 届き、攻撃者に踏まされたリンクと区別できないためである。応答方式は URI の `<response_mode>` (§5.2) で
-明示し、`direct_post` であれば開き方に関わらず §6 の提示を行う。
+明示し、`direct_post` であれば開き方に関わらず §6 の提示を行う。同様に、RP が応答の送信者や
+開始ブラウザとの一致から応答方式を推定することも防御にならない。RP は受け口ごとに意味を固定する (§8)。
 
 高い保証が必要な RP は、cross-device フローを用いず同一端末フローに限定するか、
 追加の近接確認などを独自に実装するべきである。
@@ -419,8 +439,10 @@ Authenticator は RP から指定された URL へリクエストを行う。SSR
 ### 10.3 ID Token の漏洩とリプレイ
 
 ID Token は `aud`, `nonce`, `exp` によって、特定の RP の特定の要求に対してのみ有効である。
-漏洩した ID Token を別の RP や別の要求に転用することはできない。RP は `nonce` の一回限りの検証を
-省略してはならない (MUST NOT)。
+漏洩した ID Token を別の RP や別の要求に転用することはできない。一方、`fragment` の経路では
+ID Token を提示したブラウザがログインする (§8.2) ため、有効期間内の ID Token はその要求に対する
+bearer トークンである。RP は `nonce` の一回限りの検証 (§9 手順 3) を省略してはならず (MUST NOT)、
+Authenticator は ID Token の有効期間を短く保つべきである (SHOULD。§7.2)。
 
 ### 10.4 プライバシー
 
