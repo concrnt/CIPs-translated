@@ -147,11 +147,10 @@ Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed 
 
 ```json
 {
-  "redirect_uri": "https://example.com/auth/concrnt/callback",
+  "redirect_uri": "https://example.com/auth/concrnt/callback/atuQzACZAhdDWdWSKoLkInh7injQzhX80bKtkkJjcQMfsefydw",
   "response_type": "id_token",
   "scope": "openid profile",
   "nonce": "n-0S6_WzA2Mj",
-  "state": "af0ifjsldkj",
   "exp": 1763901596,
   "display_code": "🐧🌽🍊🧩☀️🪁",
   "client_metadata": {
@@ -166,12 +165,14 @@ Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed 
 * `redirect_uri` (REQUIRED) — 応答の送り先。`direct_post` では POST 先、`fragment` ではブラウザで開く URL (§8)。
   `https` スキームの絶対 URL でなければならず (MUST)、フラグメントを含んではならない (MUST NOT)。
   オリジンは `request_uri` のオリジン (= RP のオリジン、§5.1) と一致しなければならない (MUST)。
+  要求ごとに異なる URL でよく (MAY)、RP は応答が届いた URL によってその応答をどの要求に対するものか
+  対応付ける。応答パラメータには要求を識別する値を含めない (§8)。
 * `response_type` (REQUIRED) — 常に `"id_token"`。
 * `scope` (REQUIRED) — スペース区切り。`openid` を含まなければならない (MUST)。
   本 CIP は `openid` と `profile` を定義する (§7.3)。他の CIP が追加の scope を定義できる
   (CIP-18 の `concrnt_service_key` 等)。Authenticator は未知の scope を無視する (MUST)。
 * `nonce` (REQUIRED) — RP が生成する一回限りのランダム値。推測困難でなければならない (MUST)。
-* `state` (OPTIONAL) — RP の内部状態。応答にそのまま含めて返される。
+  ID Token の `nonce` クレームとして署名の内側に戻ってくるので、ID Token をこの要求に束縛する役割を持つ (§9、§10.3)。
 * `exp` (REQUIRED) — Request Object の失効時刻。UNIX タイムスタンプ (秒) の数値。
   Authenticator は失効した要求を拒否しなければならない (MUST)。
   RP は短い有効期間 (数分程度) を設定するべきである (SHOULD。§10.1)。
@@ -326,16 +327,18 @@ RP はこの 2 つを別の受け口で扱い、互いに混ぜてはならな�
 `application/x-www-form-urlencoded` で HTTP POST を行う。
 
 ```text
-POST /auth/concrnt/callback HTTP/1.1
+POST /auth/concrnt/callback/atuQzACZAhdDWdWSKoLkInh7injQzhX80bKtkkJjcQMfsefydw HTTP/1.1
 Host: example.com
 Content-Type: application/x-www-form-urlencoded
 
-id_token=eyJhbGciOiJDT05DUk5UIi...&state=af0ifjsldkj
+id_token=eyJhbGciOiJDT05DUk5UIi...
 ```
 
 * `id_token` (REQUIRED) — §7。
-* `state` (OPTIONAL) — Request Object の `state` をそのまま返す。
-* 他の CIP が応答パラメータを追加できる (CIP-18 の `service_key_certificate` 等)。
+* 他の CIP が応答パラメータを追加できる (CIP-18 の `service_key_certificate` 等)。RP は未知のパラメータを
+  無視する (MUST)。
+
+どの要求に対する応答かは、応答が届いた `redirect_uri` で決まる (§5.3)。応答パラメータに要求の識別子は無い。
 
 Authenticator はこの POST でリダイレクトに追従してはならない (MUST NOT)。
 RP は受理した場合 HTTP 200 または 204 を返す。レスポンスボディは本仕様では定義しない。
@@ -354,11 +357,11 @@ RP のブラウザではない。
 Request Object の `redirect_uri` をブラウザで開く。
 
 ```text
-https://example.com/auth/concrnt/callback#id_token=eyJhbGciOiJDT05DUk5UIi...&state=af0ifjsldkj
+https://example.com/auth/concrnt/callback/atuQzACZAhdDWdWSKoLkInh7injQzhX80bKtkkJjcQMfsefydw#id_token=eyJhbGciOiJDT05DUk5UIi...
 ```
 
-RP のフロントエンドはフラグメントの内容をバックエンドへ送り、バックエンドは ID Token を検証 (§9) して
-**それを提示したブラウザ**に対してセッションを確立する。フラグメントは HTTP リクエストに含まれないため、
+RP のフロントエンドは、開かれた URL (= `redirect_uri`。どの要求かを示す) とフラグメントの内容をバックエンドへ送り、
+バックエンドは ID Token を検証 (§9) して**それを提示したブラウザ**に対してセッションを確立する。フラグメントは HTTP リクエストに含まれないため、
 サーバーログや Referer に ID Token が漏れない。
 
 この経路で届いた結果を、要求を開始したブラウザセッション (§8.1 の預かり先) に結び付けてはならない
@@ -370,10 +373,10 @@ RP のフロントエンドはフラグメントの内容をバックエンド�
 
 ### 8.3 エラー応答
 
-ユーザーが要求を拒否した場合、Authenticator は `id_token` の代わりに次を同じ配送路で返してもよい (MAY)。
+ユーザーが要求を拒否した場合、Authenticator は `id_token` の代わりに次を同じ配送路 (同じ `redirect_uri`) で
+返してもよい (MAY)。
 
 * `error` — `"access_denied"`。
-* `state` — Request Object の `state`。
 
 Request Object の検証失敗 (§5.4) の場合はエラー応答を返してはならない (MUST NOT)。
 検証されていない `redirect_uri` への送信になるためである。
