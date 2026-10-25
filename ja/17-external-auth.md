@@ -85,7 +85,7 @@ FQDN または CSID に限られる。一方、Concrnt の外部にあるサー�
                                     --->   3. URI を解析する (RP への取得は無い)
                                            4. RP の host を提示して同意画面を表示
                                            5. ユーザーが承認 (master key で署名)
-                                    <---   6. ID Token を https://<host>/<path> へ送信
+                                    <---   6. ID Token を https://<rest> へ送信
   7. nonce で要求を引き、ID Token を検証して
      セッションを確立
 ```
@@ -101,32 +101,34 @@ RP のバックエンドは応答方式を区別しない: 受け口の役割の
 
 ## 5. Authorization Request
 
-### 5.1 RP の識別子 (送り先 URL)
+### 5.1 送り先 URL と RP の身元
 
-RP は、応答の送り先となる HTTPS の URL `https://<host>/<path>` によって識別される。
-事前登録は存在せず、`client_id` のような別個の識別子も持たない。
+RP は、応答の送り先となる HTTPS の URL によって識別される。事前登録は存在せず、`client_id` のような別個の識別子も持たない。
 
-* 送り先 URL は Authorization Request URI (§5.2) の `<host>/<path>` に `https://` を付けて復元したものである。
-  RP ごとに 1 本であり、要求ごとに変わらない。
-* Authenticator がユーザーに提示する RP の身元は、この URL の `<host>` である (§6)。
-* ID Token の `aud` には送り先 URL の文字列をそのまま用いる (§7.2)。オリジン (`scheme://host`) ではない。
+* 送り先 URL は Authorization Request URI (§5.2) の `<rest>` に `https://` を付けて復元したものである。
+  本仕様のパラメータ (`n`, `s`) を含むクエリを持つので、要求ごとに異なる文字列になる。
+* Authenticator がユーザーに提示する RP の身元は、この URL の host である (§6)。
+* ID Token の `aud` には送り先 URL の文字列をそのまま用いる (§7.2)。オリジン (`scheme://host`) でもパスまでの部分でもない。
 
 ### 5.2 Authorization Request URI
 
 RP は Authorization Request を次の URI として表現し、QR コードまたはリンクとして提示する。
 
 ```text
-concrnt-auth://<type>/<host>/<path>?n=<nonce>[&s=<scope>]
+concrnt-auth://<type>/<rest>
+<rest> = <host>/<path>?<query>        ここで <query> は RP 自身のパラメータと n [, s] の混在
 ```
 
 * `<type>` (REQUIRED) — 応答の配送方法 (§8)。`post` または `fragment`。
   Authenticator はこれ以外の値を持つ URI を拒否しなければならない (MUST)。将来の CIP は
   新しい値をここに追加できる。同じ要求 (同じ `n`) から `post` 用と `fragment` 用の URI を両方作ってよい
   (RP のブラウザ側が QR コードには `post`、リンクには `fragment` を使う)。
-* `<host>/<path>` (REQUIRED) — 応答の送り先 `https://<host>/<path>` から `https://` を除いたもの。
-  構文上 https 以外は表現できない。`<host>` に userinfo を含んではならない (MUST NOT)。port は含んでよい。
-  `<path>` は空であってはならない (MUST NOT)。クエリは本仕様のパラメータが占めるため、送り先 URL は
-  クエリを持てない。
+* `<rest>` (REQUIRED) — 応答の送り先 URL から `https://` を除いたもの。構文上 https 以外は表現できない。
+  `<host>` に userinfo を含んではならない (MUST NOT)。port は含んでよい。`<path>` は空であってはならない (MUST NOT)。
+  クエリには RP 自身のパラメータを含めてよく、本仕様のパラメータ `n`, `s` はそれと同じクエリ文字列に混在する。
+  フラグメントを持ってはならない (MUST NOT)。
+  Authenticator は `<rest>` を加工してはならない (MUST NOT): パラメータを剥がさず、並べ替えず、再エンコードしない。
+  送り先 URL は文字列の先頭に `https://` を付けるだけで得る。
   ローカル開発のために、Authenticator は `<host>` が `localhost` または `127.0.0.1` のとき応答を http で
   送ってもよい (MAY)。その場合も `aud` は `https://` で始まる文字列である (§7.2)。
   ネイティブアプリの RP はカスタムスキームを送り先にできない。claimed HTTPS URL (Universal Links / App Links)
@@ -139,8 +141,13 @@ concrnt-auth://<type>/<host>/<path>?n=<nonce>[&s=<scope>]
   `openid` という語は使わない (応答は常に ID Token であり、儀式でしかない)。
   他の CIP が追加の値を定義できる (CIP-18 の `concrnt_service_key` 等)。Authenticator は未知の値を無視する (MUST)。
 
-Authenticator は未知のクエリパラメータを無視しなければならない (MUST)。将来の拡張はパラメータの追加で行う。
-フラグメントを持つ URI は拒否する。
+**パラメータ名の予約**: 1 文字のパラメータ名は本仕様とその拡張のために予約する。RP が自身のクエリに用いる名前は
+2 文字以上でなければならない (MUST)。Authenticator が読むのは `n` と `s` だけであり、知らない 1 文字の名前は無視し (MUST)、
+2 文字以上の名前は読まない。いずれも `<rest>` の一部としてそのまま RP に届く。将来の拡張は 1 文字のパラメータの追加で行う。
+
+送り先 URL に本仕様のパラメータが含まれる結果、`n` と `s` は署名の内側 (`aud`) にも入る。RP のコールバックには
+`n`, `s` が URL パラメータとして届き、RP は `n` を要求の行を引くのに用いてもよいが (MAY)、信頼するのは署名内の
+`nonce` クレームである (§9)。
 
 要求の有効期限 (`exp`) は URI に載せない。要求の有効期間は RP の内部事情 (保持する行の TTL) であり、
 Authenticator は関知しない。期限切れの要求への応答は RP が拒否する (§9 手順 2)。
@@ -148,22 +155,27 @@ Authenticator は関知しない。期限切れの要求への応答は RP が�
 ```text
 concrnt-auth://post/example.com/api/auth/concrnt/callback?n=atuQzACZAhdDWdWSKoLkIg
 concrnt-auth://fragment/example.com/api/auth/concrnt/callback?n=atuQzACZAhdDWdWSKoLkIg
+concrnt-auth://fragment/example.com/cb?app=foo&return=/settings&n=atuQzACZAhdDWdWSKoLkIg
 ```
+
+3 つ目の送り先 URL (= `aud`) は `https://example.com/cb?app=foo&return=/settings&n=atuQzACZAhdDWdWSKoLkIg` である。
 
 応答方式を URI 自体に載せるのは、Authenticator が URI の開き方 (アプリ内のスキャナーで読んだか、
 OS から deep link として渡されたか) から応答方式を推定できないためである (§10.1)。
 
 Authenticator は、`concrnt-auth` スキームに加えて、自身が claimed HTTPS URL
-(Universal Links / App Links) を登録している場合、同じ `<type>/<host>/<path>` とクエリを持つ
+(Universal Links / App Links) を登録している場合、同じ `<type>/<rest>` をパスとクエリに持つ
 その URL を同一の Authorization Request URI として受理してもよい (MAY)。
 
 ### 5.3 Authenticator による検証
 
 Authenticator は Authorization Request URI を次のとおり検証しなければならない (MUST)。
 
-1. §5.2 の構文に従い、`<type>` が既知の値であること。
-2. `<host>` が userinfo を含まず、`<path>` が空でないこと。送り先 URL `https://<host>/<path>` を復元する。
-3. `n` が存在し、空でないこと。
+1. §5.2 の構文に従い、`<type>` が既知の値であること。URI を `<type>` と `<rest>` の 2 つに分けるだけで、`<rest>` は解析のために
+   読むが書き換えない。
+2. `<rest>` の `<host>` が userinfo を含まず、`<path>` が空でなく、フラグメントが無いこと。送り先 URL `https://<rest>` を文字列の
+   置換で得る。
+3. クエリに `n` が存在し、空でないこと。
 
 いずれかに失敗した場合、Authenticator は要求を拒否し、ユーザーにその旨を表示する。
 失敗した要求に対して ID Token を発行してはならず (MUST NOT)、エラー応答 (§8.3) も送ってはならない (MUST NOT)。
@@ -195,8 +207,8 @@ URI の `<type>` が `post` の場合、Authenticator はさらに次を、URI �
 その結果は提示したブラウザ自身のログインにしかならない (§8.2) ため、これらの提示は要求しない。
 
 Authenticator は、そのエンティティが当該 RP に対して初めてログインする場合、
-その旨を明示的に警告するべきである (SHOULD)。RP の同一性は `aud` の文字列 (§7.2) で判定する。
-これも §10.1 の攻撃に対する緩和策である。
+その旨を明示的に警告するべきである (SHOULD)。RP の同一性は `<rest>` の host で判定する
+(`aud` は `n` を含み要求ごとに変わるので鍵にならない)。これも §10.1 の攻撃に対する緩和策である。
 
 ID Token への署名はエンティティ本体の秘密鍵で行う (§7)。Authenticator が master key の使用に
 ユーザー認証 (生体認証・PIN 等) を要求する実装である場合、その認証をもって本節の承認操作と
@@ -225,7 +237,7 @@ ID Token への署名はエンティティ本体の秘密鍵で行う (§7)。Au
 {
   "iss": "con1t0tey8uxhkqkd4wcp4hd4jedt7f0vfhk29xdd2",
   "sub": "con1t0tey8uxhkqkd4wcp4hd4jedt7f0vfhk29xdd2",
-  "aud": "https://example.com/api/auth/concrnt/callback",
+  "aud": "https://example.com/api/auth/concrnt/callback?n=atuQzACZAhdDWdWSKoLkIg",
   "nonce": "atuQzACZAhdDWdWSKoLkIg",
   "iat": 1763901296,
   "exp": 1763901596,
@@ -240,10 +252,12 @@ ID Token への署名はエンティティ本体の秘密鍵で行う (§7)。Au
 * `sub` (REQUIRED) — エンティティの CCID。`iss` と同一でなければならない (MUST)。
   CIP-2 の auth token は `sub` が `"concrnt"` 固定であるため、Concrnt サーバーは本 ID Token を
   auth token として受理しない (§7.4)。
-* `aud` (REQUIRED) — 送り先 URL (§5.1)。`"https://"` に URI の `<host>/<path>` をそのまま連結した文字列で、
-  正規化してはならない (MUST NOT)。RP はバイト単位の一致を見る (§9 手順 3)。
-  オリジン (`scheme://host`) ではないことに注意。攻撃者が `<path>` に RP オリジン上のオープンリダイレクタを
-  指定した URI を作っても、`aud` が RP の本物の送り先 URL と一致しないので RP が弾ける (§10.3)。
+* `aud` (REQUIRED) — 送り先 URL (§5.1)。`"https://"` に URI の `<rest>` をそのまま連結した文字列で、クエリ
+  (`n`, `s`, RP のパラメータ) もすべて含む。正規化してはならない (MUST NOT)。RP は発行時の送り先 URL を要求の行に
+  保存しておき、バイト単位の一致を見る (§9 手順 3)。`post` と `fragment` で `<rest>` は同じなので保存は 1 つでよい。
+  オリジン (`scheme://host`) でもパスまでの部分でもないことに注意。攻撃者が `<path>` に RP オリジン上のオープン
+  リダイレクタを指定した URI を作っても、`aud` が RP の本物の送り先 URL と一致しないので RP が弾ける (§10.3)。
+  同様に `s` を差し替えた URI も `aud` の不一致で検出される。
   一般的な JWT ライブラリの `aud` 検証で自動的に照合されるため、RP 実装者が確認を忘れられない。
 * `nonce` (REQUIRED) — Authorization Request URI の `n`。
 * `iat` (REQUIRED) — 発行時刻。
@@ -306,11 +320,11 @@ RP はこの 2 つを別の受け口で扱い、互いに混ぜてはならな�
 
 ### 8.1 post (cross-device)
 
-`<type>` が `post` の場合、Authenticator は送り先 URL `https://<host>/<path>` に対して
+`<type>` が `post` の場合、Authenticator は送り先 URL `https://<rest>` (クエリ込み) に対して
 `application/x-www-form-urlencoded` で HTTP POST を行う。
 
 ```text
-POST /api/auth/concrnt/callback HTTP/1.1
+POST /api/auth/concrnt/callback?n=atuQzACZAhdDWdWSKoLkIg HTTP/1.1
 Host: example.com
 Content-Type: application/x-www-form-urlencoded
 
@@ -338,7 +352,7 @@ RP のブラウザではない。
 `<type>` が `fragment` の場合、Authenticator は応答パラメータを URL フラグメントに付与した送り先 URL を開く。
 
 ```text
-https://example.com/api/auth/concrnt/callback#id_token=eyJhbGciOiJDT05DUk5UIi...
+https://example.com/api/auth/concrnt/callback?n=atuQzACZAhdDWdWSKoLkIg#id_token=eyJhbGciOiJDT05DUk5UIi...
 ```
 
 通常はブラウザが開く。RP がその URL を claimed HTTPS URL (Universal Links / App Links) として登録している
@@ -373,7 +387,7 @@ RP は ID Token を次の手順で検証しなければならない (MUST)。
    `kid` が存在しないことを確認する。
 2. payload の `nonce` で、自身が発行した要求の行を引く。行が無い・期限切れ・使用済みなら拒否する。
    この時点では署名を検証していないので、payload の内容は行を引く目的以外に使わない。
-3. `aud` が自身の送り先 URL (= 発行した `https://<host>/<path>`) と完全一致することを確認する。
+3. `aud` が要求の行に保存した送り先 URL (= 発行時の `https://<rest>`) と完全一致することを確認する。
 4. `sub` が `iss` と等しく、CIP-0 §5.2 の CCID (小文字の Bech32、HRP `con`) であることを確認する。
 5. `exp` が `iat + 300` であること、現在時刻が `exp` 以内であること (時計ずれの許容込み)、
    `iat` が妥当な範囲にあることを確認する。
@@ -423,7 +437,7 @@ Authenticator が URI の開き方で応答方式を制限すること (例: dee
 
 ### 10.2 偽造された Authorization Request URI
 
-要求は by-value であり、誰でも任意の `<host>/<path>` と `n` を持つ URI を作れる。これは RP にとって無害である。
+要求は by-value であり、誰でも任意の `<rest>` (送り先・クエリ・`n`) を持つ URI を作れる。これは RP にとって無害である。
 偽の `n` に対して発行された ID Token は正規の RP の送り先 URL に届くが、対応する要求の行が無いので
 §9 手順 2 で捨てられる。その ID Token の `aud` はその RP であるから、他所へ転用もできない。
 したがって要求の内容を RP のオリジンから取得する (request_uri) ことに意味は無く、Authenticator が
@@ -432,8 +446,8 @@ Authenticator が URI の開き方で応答方式を制限すること (例: dee
 ### 10.3 オープンリダイレクタ
 
 攻撃者は `<path>` に RP オリジン上のオープンリダイレクタを指定した `fragment` の URI を作り、被害者に開かせることで、
-`https://<host>/<redirector>#id_token=…` のフラグメントを自身のサイトへ運ばせうる。しかし ID Token の `aud` は
-`https://<host>/<redirector>` であって RP の本物の送り先 URL ではないので、RP はこれを受理しない (§9 手順 3)。
+`https://<host>/<redirector>?…&n=…#id_token=…` のフラグメントを自身のサイトへ運ばせうる。しかし ID Token の `aud` は
+`https://<host>/<redirector>?…` であって RP が発行した送り先 URL ではないので、RP はこれを受理しない (§9 手順 3)。
 横取りされた ID Token は他の RP でも使えない。
 
 残る影響は、漏れた ID Token の中身 (CCID、`profile` を要求していればプロフィールクレーム) が攻撃者に読まれることである。
